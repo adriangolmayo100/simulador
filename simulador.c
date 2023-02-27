@@ -54,7 +54,7 @@ typedef struct
 typedef struct
 {                    /* Línea de ROB */
     int TAG_ROB;     /* Etiqueta que identifica la línea de ROB */
-    int instrucción; /* tipo de instrucción */
+    int instruccion; /* tipo de instrucción */
     int busy;        /* Indica si el contenido de la línea es válido (1) o no (0) */
     int destino;     /* identificador registro destino (rd) */
     int valor;       /* resultado tras finalizar la etapa EX */
@@ -75,30 +75,31 @@ typedef struct
     /* resultado valido(1) */
     int clk_tick_ok; /* ciclo de reloj cuando se valida res_ok */
 } UF_t;
+// Declaración de las variables que simulan la memoria de datos, de instrucciones y banco de registros.
+// Serán vectores
+int p_rob_cabeza, p_rob_cola = 0; /* puntero a las posiciones de rob para introducir (cola) o retirar instrucciones (cabeza) */
+int PC = 0;                       /* puntero a memoria de instrucciones, siguiente instrucción a IF */
+
+int p_er_cola[TOTAL_UF] = {0, 0, 0};      // vector de punteros que apuntan a la cola de cada una de las UF (
+int ciclo = 1;                            // ciclo de ejecución actual
+reg_t banco_registros[REG];               /* Banco de registros */
+int memoria_datos[DAT];                   /* Memoria de datos */
+instruccion_t memoria_instrucciones[INS]; /* Memoria de instrucciones */
+UF_t UF[TOTAL_UF];                        /* 3 UF: UF[0] simula la ALU, UF[1] carga/almacenamiento y UF[2] multiplicación */
+ER_t ER[TOTAL_UF][INS];                   /* Vector de estaciones de reserva ER[0] para ALU, ER[1] para MEM y ER[2] para MULT */
+                                          /* INS indica el total de instrucciones que puede almacenar cada ER_t */
+ROB_t ROB[INS];                           /* Bufer de reordenamiento */
+int inst_prog;                            /* total instrucciones programa */
+int inst_rob = 0;                         /* instrucciones en rob */
+
 int main(int argc, char *argv[])
 {
-    // Declaración de las variables que simulan la memoria de datos, de instrucciones y banco de registros.
-    // Serán vectores
-    reg_t banco_registros[REG];               /* Banco de registros */
-    int memoria_datos[DAT];                   /* Memoria de datos */
-    instruccion_t memoria_instrucciones[INS]; /* Memoria de instrucciones */
-    UF_t UF[TOTAL_UF];                        /* 3 UF: UF[0] simula la ALU, UF[1] carga/almacenamiento y UF[2] multiplicación */
-    ER_t ER[TOTAL_UF][INS];                   /* Vector de estaciones de reserva ER[0] para ALU, ER[1] para MEM y ER[2] para MULT */
-                                              /* INS indica el total de instrucciones que puede almacenar cada ER_t */
-    ROB_t ROB[INS];                           /* Bufer de reordenamiento */
-    int inst_prog;                            /* total instrucciones programa */
-    int inst_rob = 0;                         /* instrucciones en rob */
-
-    int p_rob_cabeza, p_rob_cola = 0;    /* puntero a las posiciones de rob para introducir (cola) o retirar instrucciones (cabeza) */
-    int PC = 0;                          /* puntero a memoria de instrucciones, siguiente instrucción a IF */
-    int p_er_cola[TOTAL_UF] = {0, 0, 0}; // vector de punteros que apuntan a la cola de cada una de las UF (
     // Inicialización del simulador
     Carga_programa(inst_prog, memoria_instrucciones);
     Inicializar_ER(ER);
     Inicializar_ROB(ROB);
     Inicializar_Banco_registros(banco_registros);
     Inicializar_memoria_datos(memoria_datos);
-    int ciclo = 1; // ciclo de ejecución actual
     // Simulación. Bucle que se ejecuta mientras haya instrucciones en el ROB e instrucciones en la memoria de instrucciones
     while ((inst_rob > 0) || (inst_prog > 0))
     { // En un ciclo de reloj se ejecutan las 5 etapas de procesamiento de una instrucción
@@ -119,19 +120,59 @@ int main(int argc, char *argv[])
         Mostrar_Banco_Registros(banco_registros);
     } // while
 } // main
-
-Inicializar_ROB(ROB_t ROB[]) {
-    int i;
-    struct ROB_t root;
-    for (i = 0; i < INS; i++) {
-        ROB[i] = (struct ROB_t*)malloc(sizeof(struct ROB_t));
+void Inicializar_ER(ER_t **ER)
+{
+    int i = 0, j = 0;
+    for (i = 0; i < TOTAL_UF; i++)
+    {
+        for (j = 0; j < INS; j++)
+        {
+            ER[i][j].busy=0;          /* contenido de la línea válido (1) o no (0) */
+            ER[i][j].operacion=0;     /* operación a realizar en UF (suma,resta,mult,lw,sw) */
+            ER[i][j].opa=0;           /* valor Vj*/
+            ER[i][j].opa_ok=0;        /* Qj, (1) opa válido o no (0)*/
+            ER[i][j].clk_tick_ok_a=0; /* ciclo de reloj donde se valida opa_ok */
+            ER[i][j].opb=0;           /* Valor Vk */
+            ER[i][j].opb_ok=0;        /* Qk, (1) válido o (0) no válido */
+            ER[i][j].clk_tick_ok_b=0; /* ciclo de reloj se valida donde opb_ok */
+            ER[i][j].inmediato=0;     /*utilizado para las instrucciones lw/sw */
+            ER[i][j].TAG_ROB=0;
+        }
     }
 }
-Inicializar_Banco_registros(banco_registros) {
-
+void Inicializar_ROB(ROB_t ROB[])
+{
+    int i;
+    for (i = 0; i < INS; i++)
+    {
+        ROB[i].TAG_ROB = 0;
+        ROB[i].instruccion = 0;
+        ROB[i].busy = 0;
+        ROB[i].destino = 0;
+        ROB[i].valor = 0;
+        ROB[i].valor_ok = 0;
+        ROB[i].clk_tick_ok = 0;
+        ROB[i].etapa = 0;
+    }
 }
-Inicializar_memoria_datos(memoria_datos) {
-
+void Inicializar_Banco_registros(reg_t banco_registros[])
+{
+    int i;
+    for (i = 0; i < REG; i++)
+    {
+        banco_registros[i].TAG_ROB = 0;
+        banco_registros[i].ok = 0;
+        banco_registros[i].clk_tick_ok = 0;
+        banco_registros[i].contenido = 0;
+    }
+}
+void Inicializar_memoria_datos(int memoria_datos[])
+{
+    int i;
+    for (i = 0; i < DAT; i++)
+    {
+        memoria_datos[i] = 0;
+    }
 }
 void Etapa_commit()
 {
@@ -150,10 +191,28 @@ void Etapa_commit()
     rob_ = ROB[p_rob_cabeza]; // instrucción a eliminar de ROB
     if ((rob_.busy == 1) && (rob_.etapa == WB) && (rob_.valor_ok == 1) && (rob_.clk_tick_ok < ciclo))
     { // instrucción preparada para retirar
-      // Actualizar el registro rob_.destino con rob_.valor, si rob_.TAG_ROB coincide con la etiqueta almacenada en ese registro destino.
-      // Si rob_.operacion es store, escribir en memoria en la dirección rob_.destino el valor de rob_.valor
-      // Retirar instrucción de ROB: Actualizar puntero de cabecera y número de instrucciones en rob (en store solo hace esto)
-      // Limpiar línea ROB. Poner línea todo a 0
+        // Actualizar el registro rob_.destino con rob_.valor, si rob_.TAG_ROB coincide con la etiqueta almacenada en ese registro destino.
+        // Si rob_.operacion es store, escribir en memoria en la dirección rob_.destino el valor de rob_.valor
+        // Retirar instrucción de ROB: Actualizar puntero de cabecera y número de instrucciones en rob (en store solo hace esto)
+        // Limpiar línea ROB. Poner línea todo a 0
+        if (rob_.instruccion == sd)
+        {
+            memoria_datos[rob_.destino] = rob_.valor;
+        }
+        else if (rob_.TAG_ROB == banco_registros[rob_.destino].TAG_ROB)
+        {
+            banco_registros[rob_.destino].contenido = rob_.valor;
+        }
+        p_rob_cabeza++;
+        inst_rob--;
+        rob_.TAG_ROB = 0;
+        rob_.instruccion = 0;
+        rob_.busy = 0;
+        rob_.destino = 0;
+        rob_.valor = 0;
+        rob_.valor_ok = 0;
+        rob_.clk_tick_ok = 0;
+        rob_.etapa = 0;
     }
 }
 void Etapa_WB()

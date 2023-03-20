@@ -259,94 +259,176 @@ void Etapa_WB()
                     }
                     break;
                 } // fin for líneas ER
+            }     // end for todas ER
+        }
+        else           // if principal
+            i = i + 1; // siguiente UF
+    }                  // while todas UFs
+}
+void Etapa_EX(){
+    // En todas las UF:
+    // 1. En todas las UF que están en uso:
+    // * Incremento un ciclo de operación.
+    // *Si es el último: generar resultado y almacenarlo en UF[i].res, validarlo y actualizar ciclo
+    // 2. Si alguna está libre: Enviar una nueva instrucción a ejecutar si hay instrucción disponible de ese tipo
+    // * Se busca una instrucción que tenga los operandos disponibles en su ER
+    // * Solo se puede enviar una instrucción
+    // Instrucción ALU y ld: inicializa la UF, carga operandos.
+    // Instrucción sd: Actualiza UF, calculando la dirección destino en opa y genera el resultado que es el opb. Cont_ciclos lo pone a max.
+    // Dato se escribe en memoria en etapa Commit.
+    // *Se libera la línea de la ER de la instrucción enviada a ejecutar.
+    // Consideración: en esta plantilla no se tiene en cuenta las líneas libres de las ERs no ocupadas.
+    int i = 0;      // contador unidades funcionales
+    int enviar = 0; // no se ha enviado ninguna instrucción a ejecutar
+    int max;
+    int j, fin;
+
+    UF_t unidad;
+    ER_t estacionR;
+
+    while (i < TOTAL_UF){ 
+        // revisa todas las UFs. Si está en uso, Incrementa ciclo.
+        // Si es el último, generar resultado y validarlo. si no envía una instrucción a ejecutar (si la hay de ese tipo).
+        unidad = UF[i];
+        
+        // Establecer ciclos máximos para cada UF
+        if (i == 0)
+            max = CICLOS_ALU;
+        else if (i == 1)
+            max = CICLOS_MEM;
+        else if (i == 2)
+            max = CICLOS_MULT;
+
+        if(unidad.uso){ // si está en uso, se incrementa el ciclo y no se pueden enviar otra instrucción.
+            
+            if(unidad.cont_ciclos < max){
+                unidad.cont_ciclos++;
+            
+            }else{
+                unidad.res = unidad.opa + unidad.opb;
+                unidad.res_ok = 1;
+                unidad.clk_tick_ok = ciclo;
+                /*
+                unidad.uso = 0; // WB
+                unidad.cont_ciclos = 0; //WB
+                */
+
             }
-            else           // if principal
-                i = i + 1; // siguiente UF
-        }                  // while todas UFs
+            
+        }else if (! enviar){ // no está en uso y todavía no se ha enviado ninguna instrucción, se comprueba si se puede enviar alguna de este tipo
+            
+            estacionR = ER[i];
+            fin = p_er_cola[i];
+            j = 0;
+
+            while ( (! enviar) && ( j < fin ) ){
+                
+            }
+            
+            /*
+            er_ = ER[i];
+            fin = p_er_cola[i]; // última línea insertada
+            j = 0;              // contador de líneas de ER[i] desde 0 hasta fin
+            while ((enviar == 0) && (j < fin))
+            { // búsqueda de instrucción a ejecutar en todas las líneas validas de er_
+                if (er_[j].busy == 1)
+                { // comprueba si los operandos están disponibles para operación ALU
+                    if ((er_[j].operacion == ALU) && (er_[j].opa_ok == 1) && (er_[j].clk_tick_ok_a < ciclo) &&
+                        (er_[j].opb_ok == 1) && (er_[j].clk_tick_ok_b < ciclo))
+                    { // operandos disponibles
+                      // Enviar operación a ejecutar a UF actualizando UF[i] correspondiente;
+                      // enviar = 1 indicando que ya no se pueden enviar a ejecutar más instrucciones
+                        else if ((er_[j].operacion == store) && (er_[j].opa_ok == 1) && (er_[j].clk_tick_ok_a < ciclo) &&
+                                 (er_[j].opb_ok == 1) && (er_[j].clk_tick_ok_b < ciclo))
+                        { // operandos disponibles para store
+                          //  uf_.opa = er_ [j].opa + er_ [j].inmediato)
+                          //   uf_.res = er_ [j].opb, se valida
+                          //  uf_. cont_ciclos = max (no ocupa más ciclos), uf_.uso=1
+                          //  enviar = 1 indicando que ya no se pueden enviar a ejecutar más instrucciones
+                        }
+                        else if ((er_[j].operacion == load) && (er_[j].opa_ok == 1) && (er_[j].clk_tick_ok_a < ciclo))
+                        { // load
+                          // uf_.opa = er_ [j].opa + er_ [j].inmediato)
+                          // Hay que verificar que no hay en ninguna línea de ROB (sea x) almacenada una instrucción de tipo sd
+                          // donde el campo ROB[x].destino sea igual a esa dirección uf_.opa
+                          // Si eso ocurre : UF[i].res = ROB[x].valor y se valida. Además Uf[i].cont_ciclos = max y UF[i].uso=1
+                          //  En caso contrario; se inicia operación de lectura en memoria inicializando UF (no hay resultado):
+                          //  UF[i]cont_ciclos=1, uf[i].uso=1
+                          //  enviar = 1 indicando que ya no se pueden enviar a ejecutar más instrucciones
+                        }
+                        else
+                        { // buscar otra instrucción en esa ER
+                            j = j + 1;
+                        }
+                        if enviar
+                        {
+                            // Actualizar en ROB[er_.TAG_ROB].etapa=EX
+                            // limpiarlínea er_.[i]
+                        }
+                    }      // while er_
+                }  
+                        // if principal uf
+                i++; // siguiente UF aunque se haya enviado una instrucción hay que comprobar las que están en uso para incrementar ciclo
+            
+            }              // while UF
+        }*/
     }
-    void Etapa_EX()
-    {
-        // En todas las UF:
-        // 1. En todas las UF que están en uso:
-        // * Incremento un ciclo de operación.
-        // *Si es el último: generar resultado y almacenarlo en UF[i].res, validarlo y actualizar ciclo
-        // 2. Si alguna está libre: Enviar una nueva instrucción a ejecutar si hay instrucción disponible de ese tipo
-        // * Se busca una instrucción que tenga los operandos disponibles en su ER
-        // * Solo se puede enviar una instrucción
-        // Instrucción ALU y ld: inicializa la UF, carga operandos.
-        // Instrucción sd: Actualiza UF, calculando la dirección destino en opa y genera el resultado que es el opb. Cont_ciclos lo pone a max.
-        // Dato se escribe en memoria en etapa Commit.
-        // *Se libera la línea de la ER de la instrucción enviada a ejecutar.
-        // Consideración: en esta plantilla no se tiene en cuenta las líneas libres de las ERs no ocupadas.
-        int i = 0;      // contador unidades funcionales
-        int enviar = 0; // no se ha enviado ninguna instrucción a ejecutar
-        while (i < TOTAL_UF)
-        { // revisa todas las UFs. Si está en uso, Incrementa ciclo.
-            // Si es el último, generar resultado y validarlo. si no envía una instrucción a ejecutar (si la hay de ese tipo).
-            uf_ = UF[i];
-            // Establecer ciclos máximos para cada UF
-            if (i == 0)
-                max = CICLOS_ALU;
-            else if (i == 1)
-                max = CICLOS_MEM;
-            else if (i == 2)
-                max = CICLOS_MULT;
-            If((uf_.uso == 1))
-            { // si está en uso, se incrementa el ciclo y no se pueden enviar otra instrucción.
-                If((uf_.cont_ciclos < max &&))
-                {
-                    uf_.cont_ciclos = uf_.cont_ciclos + 1 // incrementar el ciclo
-                                      If(uf_.cont_ciclos == max)
-                    {
-                        // si se ha finalizado la operación generar resultado, validarlo, actualizar ciclo
-                    }
-                }
-            }
-            else if (enviar == 0)
-            { // no está en uso y todavía no se ha enviado ninguna instrucción, se comprueba si se puede enviar alguna de este tipo
-                er_ = ER[i];
-                fin = p_er_cola[i]; // última línea insertada
-                j = 0;              // contador de líneas de ER[i] desde 0 hasta fin
-                while ((enviar == 0) && (j < fin))
-                { // búsqueda de instrucción a ejecutar en todas las líneas validas de er_
-                    if (er_[j].busy == 1)
-                    { // comprueba si los operandos están disponibles para operación ALU
-                        if ((er_[j].operacion == ALU) && (er_[j].opa_ok == 1) && (er_[j].clk_tick_ok_a < ciclo) &&
-                            (er_[j].opb_ok == 1) && (er_[j].clk_tick_ok_b < ciclo))
-                        { // operandos disponibles
-                          // Enviar operación a ejecutar a UF actualizando UF[i] correspondiente;
-                          // enviar = 1 indicando que ya no se pueden enviar a ejecutar más instrucciones
-                            else if ((er_[j].operacion == store) && (er_[j].opa_ok == 1) && (er_[j].clk_tick_ok_a < ciclo) &&
-                                     (er_[j].opb_ok == 1) && (er_[j].clk_tick_ok_b < ciclo))
-                            { // operandos disponibles para store
-                              //  uf_.opa = er_ [j].opa + er_ [j].inmediato)
-                              //   uf_.res = er_ [j].opb, se valida
-                              //  uf_. cont_ciclos = max (no ocupa más ciclos), uf_.uso=1
-                              //  enviar = 1 indicando que ya no se pueden enviar a ejecutar más instrucciones
-                            }
-                            else if ((er_[j].operacion == load) && (er_[j].opa_ok == 1) && (er_[j].clk_tick_ok_a < ciclo))
-                            { // load
-                              // uf_.opa = er_ [j].opa + er_ [j].inmediato)
-                              // Hay que verificar que no hay en ninguna línea de ROB (sea x) almacenada una instrucción de tipo sd
-                              // donde el campo ROB[x].destino sea igual a esa dirección uf_.opa
-                              // Si eso ocurre : UF[i].res = ROB[x].valor y se valida. Además Uf[i].cont_ciclos = max y UF[i].uso=1
-                              //  En caso contrario; se inicia operación de lectura en memoria inicializando UF (no hay resultado):
-                              //  UF[i]cont_ciclos=1, uf[i].uso=1
-                              //  enviar = 1 indicando que ya no se pueden enviar a ejecutar más instrucciones
-                            }
-                            else
-                            { // buscar otra instrucción en esa ER
-                                j = j + 1;
-                            }
-                            if enviar
-                            {
-                                // Actualizar en ROB[er_.TAG_ROB].etapa=EX
-                                // limpiarlínea er_.[i]
-                            }
-                        }      // while er_
-                    }          // if principal uf
-                    i = i + 1; // siguiente UF aunque se haya enviado una instrucción hay que comprobar las que están en uso para incrementar ciclo
-                }              // while UF
+}
+void Etapa_ID_ISS()
+{
+    // 1.- Lee una instrucción de la directamente de la memoria de instrucciones y la inserta en la ER correspondiente.
+    //  instrucción apuntada por PC: inst = memoria_instrucciones[PC]
+    //  2.- Identifica el tipo de instrucción y selecciona la ER para insertarla. Será función del código de operación de la instrucción
+    //  Si inst.cod == 1 o 2 → tipo =ALU
+    //  Si inst.cod == 3 o 4 → tipo = MEM
+    //  SI inst.cod == 4 → tipo = MULT
+    //
+    // 3.- Añadir instrucción en ROB en la posición indicada en p_rob_cola. Actualiza todos sus campos
+    //  Actualiza p_rob_cola + 1
+    //  4.- Utiliza el puntero p_er_cola(tipo) que apunta a la cola de ER[tipo] para almacenarla en esa posición.
+    //  Actualiza todos sus campos:
+    //  * opa y opb. Busca en registros rs y rt
+    //  * Si el campo ok de esos registros está a 1 y clk_tick_ok es menor que el ciclo actual,
+    //  se carga su contenido en los campos opa y opb de la ER, se validan y se actualiza el ciclo (operandos válidos)
+    //  * En caso contrario se carga en opa y/o opb el campo TAG_ROB de esos registros, y no se validan (operandos no válidos)
+    //  *Etiqueta de la línea de ROB donde ha almacenado la instrucción.
+    //  *Actualizar p_er_cola[tipo] + 1
+    // 4.- Invalidar contenido del registro destino poniendo campo ok a 0 y en TAG_ROB la línea de ROB donde se ha almacenado dicha instrucción.
+    // 5. Actualiza PC + 1 y inst_prog - 1
+    if (inst_prog > 0)
+    { // leer la instrucción apuntada por PC y almacenarla en ER y ROB
+        instruct_t inst = memoria_instrucciones[PC];
+        ROB[p_rob_cola].TAG_ROB=p_rob_cola;
+        ROB[p_rob_cola].instruccion=inst.cd;
+        ROB[p_rob_cola].busy=0;
+        ROB[p_rob_cola].destino=inst.rd;
+        ROB[p_rob_cola].valor=0;
+        ROB[p_rob_cola].valor_ok=0;
+        ROB[p_rob_cola].clk_tick_ok=0;
+        ROB[p_rob_cola].etapa=0;
+        // Añadir instrucción en ROB[p_rob_cola] y actualizar todos sus campos.
+        // actualizar p_rob_cola + 1
+        // Actualizar línea de la ER correspondiente según tipo de instrucción, ER[p_er_cola[tipo]], donde tipo se obtiene a partir del código de operación.
+        int index_RS = p_er_cola[inst.cod]++;
+        ER[inst.cod][p_er_cola[inst.cod]].busy=0;
+        ER[inst.cod][p_er_cola[inst.cod]].operacion=0;
+        ER[inst.cod][p_er_cola[inst.cod]].opa=0;
+        ER[inst.cod][p_er_cola[inst.cod]].opa_ok=0;
+        ER[inst.cod][p_er_cola[inst.cod]].clk_tick_ok_a=0;
+        ER[inst.cod][p_er_cola[inst.cod]].opb=0;
+        ER[inst.cod][p_er_cola[inst.cod]].opb_ok=0;
+        ER[inst.cod][p_er_cola[inst.cod]].clk_tick_ok_b=0;
+        ER[inst.cod][p_er_cola[inst.cod]].inmediato=inst.inmediato;
+        ER[inst.cod][p_er_cola[inst.cod]].TAG_ROB=p_rob_cola;
+        //  p_er_cola[tipo] es el puntero que apunta a la línea donde se tiene que insertar la instrucción
+        //  Todas las instrucciones excepto ld: buscar operandos a y b en registros y/o ROB. Load solo busca operando a
+        if (inst.cod==3){
+            ROB[p_rob_cola].destino=inst.rt;
+            if (banco_registros[inst.rs].ok==1) ER[inst.cod][index_RS].opa=0;
+            else {
+                ER[inst.cod][index_RS].opa_ok=ROB[banco_registros[inst.rs].TAG_ROB];
+                ER[inst.cod][index_RS].clk_tick_ok_a=ROB[banco_registros[inst.rs].clk_tick_ok];
+
             }
         }
     }

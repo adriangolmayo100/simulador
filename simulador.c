@@ -127,16 +127,16 @@ void Inicializar_ER(ER_t **ER)
     {
         for (j = 0; j < INS; j++)
         {
-            ER[i][j].busy=0;          /* contenido de la línea válido (1) o no (0) */
-            ER[i][j].operacion=0;     /* operación a realizar en UF (suma,resta,mult,lw,sw) */
-            ER[i][j].opa=0;           /* valor Vj*/
-            ER[i][j].opa_ok=0;        /* Qj, (1) opa válido o no (0)*/
-            ER[i][j].clk_tick_ok_a=0; /* ciclo de reloj donde se valida opa_ok */
-            ER[i][j].opb=0;           /* Valor Vk */
-            ER[i][j].opb_ok=0;        /* Qk, (1) válido o (0) no válido */
-            ER[i][j].clk_tick_ok_b=0; /* ciclo de reloj se valida donde opb_ok */
-            ER[i][j].inmediato=0;     /*utilizado para las instrucciones lw/sw */
-            ER[i][j].TAG_ROB=0;
+            ER[i][j].busy = 0;          /* contenido de la línea válido (1) o no (0) */
+            ER[i][j].operacion = 0;     /* operación a realizar en UF (suma,resta,mult,lw,sw) */
+            ER[i][j].opa = 0;           /* valor Vj*/
+            ER[i][j].opa_ok = 0;        /* Qj, (1) opa válido o no (0)*/
+            ER[i][j].clk_tick_ok_a = 0; /* ciclo de reloj donde se valida opa_ok */
+            ER[i][j].opb = 0;           /* Valor Vk */
+            ER[i][j].opb_ok = 0;        /* Qk, (1) válido o (0) no válido */
+            ER[i][j].clk_tick_ok_b = 0; /* ciclo de reloj se valida donde opb_ok */
+            ER[i][j].inmediato = 0;     /*utilizado para las instrucciones lw/sw */
+            ER[i][j].TAG_ROB = 0;
         }
     }
 }
@@ -161,7 +161,7 @@ void Inicializar_Banco_registros(reg_t banco_registros[])
     for (i = 0; i < REG; i++)
     {
         banco_registros[i].TAG_ROB = 0;
-        banco_registros[i].ok = 0;
+        banco_registros[i].ok = 1;
         banco_registros[i].clk_tick_ok = 0;
         banco_registros[i].contenido = 0;
     }
@@ -276,7 +276,7 @@ void Etapa_WB()
             i = i + 1; // siguiente UF
     }                  // while todas UFs
 }
-Etapa_EX()
+void Etapa_EX()
 {
     // En todas las UF:
     // 1. En todas las UF que están en uso:
@@ -362,7 +362,7 @@ Etapa_EX()
         }
     }
 }
-Etapa_ID_ISS()
+void Etapa_ID_ISS()
 {
     // 1.- Lee una instrucción de la directamente de la memoria de instrucciones y la inserta en la ER correspondiente.
     //  instrucción apuntada por PC: inst = memoria_instrucciones[PC]
@@ -385,12 +385,53 @@ Etapa_ID_ISS()
     // 5. Actualiza PC + 1 y inst_prog - 1
     if (inst_prog > 0)
     { // leer la instrucción apuntada por PC y almacenarla en ER y ROB
-        inst = memoria_instrucciones[PC]
+        instruct_t inst = memoria_instrucciones[PC];
+        ROB[p_rob_cola].TAG_ROB=p_rob_cola;
+        ROB[p_rob_cola].instruccion=inst.cd;
+        ROB[p_rob_cola].busy=0;
+        ROB[p_rob_cola].destino=inst.rd;
+        ROB[p_rob_cola].valor=0;
+        ROB[p_rob_cola].valor_ok=0;
+        ROB[p_rob_cola].clk_tick_ok=0;
+        ROB[p_rob_cola].etapa=0;
         // Añadir instrucción en ROB[p_rob_cola] y actualizar todos sus campos.
         // actualizar p_rob_cola + 1
         // Actualizar línea de la ER correspondiente según tipo de instrucción, ER[p_er_cola[tipo]], donde tipo se obtiene a partir del código de operación.
+        int index_RS = p_er_cola[inst.cod]++;
+        ER[inst.cod][p_er_cola[inst.cod]].busy=0;
+        ER[inst.cod][p_er_cola[inst.cod]].operacion=0;
+        ER[inst.cod][p_er_cola[inst.cod]].opa=0;
+        ER[inst.cod][p_er_cola[inst.cod]].opa_ok=0;
+        ER[inst.cod][p_er_cola[inst.cod]].clk_tick_ok_a=0;
+        ER[inst.cod][p_er_cola[inst.cod]].opb=0;
+        ER[inst.cod][p_er_cola[inst.cod]].opb_ok=0;
+        ER[inst.cod][p_er_cola[inst.cod]].clk_tick_ok_b=0;
+        ER[inst.cod][p_er_cola[inst.cod]].inmediato=inst.inmediato;
+        ER[inst.cod][p_er_cola[inst.cod]].TAG_ROB=p_rob_cola;
         //  p_er_cola[tipo] es el puntero que apunta a la línea donde se tiene que insertar la instrucción
         //  Todas las instrucciones excepto ld: buscar operandos a y b en registros y/o ROB. Load solo busca operando a
+        if (inst.cod==3){
+            ROB[p_rob_cola].destino=inst.rt;
+            if (banco_registros[inst.rs].ok==1) ER[inst.cod][index_RS].opa=0;
+            else {
+                ER[inst.cod][index_RS].opa_ok=ROB[banco_registros[inst.rs].TAG_ROB];
+                ER[inst.cod][index_RS].clk_tick_ok_a=ROB[banco_registros[inst.rs].clk_tick_ok];
+            }
+        }
+        else{
+            ROB[p_rob_cola].destino=inst.rd;
+            if (banco_registros[inst.rs].ok==1) ER[inst.cod][index_RS].opa=0;
+            else {
+                ER[inst.cod][index_RS].opa_ok=ROB[banco_registros[inst.rs].TAG_ROB];
+                ER[inst.cod][index_RS].clk_tick_ok_a=ROB[banco_registros[inst.rs].clk_tick_ok];
+            } 
+            if (banco_registros[inst.rt].ok==1) ER[inst.cod][index_RS].opb=0;
+            else {
+                ER[inst.cod][index_RS].opb_ok=ROB[banco_registros[inst.rt].TAG_ROB];
+                ER[inst.cod][index_RS].clk_tick_ok_b=ROB[banco_registros[inst.rt].clk_tick_ok];
+            }
+        }
+        p_rob_cola++;
         //  Si es válido, cargarlo en ER sino poner línea de ROB que proporcionará su valor cuando se ejecute la instrucción de quien dependey poner
         // operando no válido
         // Actualizamos registro destino (inst.rd) como no válido y línea de ROB donde está la instrucción que lo genera

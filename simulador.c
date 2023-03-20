@@ -415,7 +415,6 @@ void Etapa_ID_ISS()
             if (banco_registros[inst.rs].ok==1) ER[inst.cod][index_RS].opa=0;
             else {
                 ER[inst.cod][index_RS].opa_ok=ROB[banco_registros[inst.rs].TAG_ROB];
-                ER[inst.cod][index_RS].clk_tick_ok_a=ROB[banco_registros[inst.rs].clk_tick_ok];
             }
         }
         else{
@@ -423,17 +422,18 @@ void Etapa_ID_ISS()
             if (banco_registros[inst.rs].ok==1) ER[inst.cod][index_RS].opa=0;
             else {
                 ER[inst.cod][index_RS].opa_ok=ROB[banco_registros[inst.rs].TAG_ROB];
-                ER[inst.cod][index_RS].clk_tick_ok_a=ROB[banco_registros[inst.rs].clk_tick_ok];
             } 
             if (banco_registros[inst.rt].ok==1) ER[inst.cod][index_RS].opb=0;
             else {
                 ER[inst.cod][index_RS].opb_ok=ROB[banco_registros[inst.rt].TAG_ROB];
-                ER[inst.cod][index_RS].clk_tick_ok_b=ROB[banco_registros[inst.rt].clk_tick_ok];
             }
         }
+        ROB[p_rob_cola].valor_ok=0;
         p_rob_cola++;
         //  Si es válido, cargarlo en ER sino poner línea de ROB que proporcionará su valor cuando se ejecute la instrucción de quien dependey poner
         // operando no válido
+        banco_registros[inst.rd].ok=0;
+        PC++;
         // Actualizamos registro destino (inst.rd) como no válido y línea de ROB donde está la instrucción que lo genera
         //  Actualizar PC para que apunte siguiente instrucción PC + 1 y el número de instrucciones leídas inst_prog - 1
     }

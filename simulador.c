@@ -222,20 +222,20 @@ void Etapa_WB()
             ROB[UF[i].TAG_ROB].clk_tick_ok = ciclo;
             if (ROB[UF[i].TAG_ROB].instruccion == sd)
             {
-                ROB[UF[i].TAG_ROB].destino = UF[i].op_a;
+                ROB[UF[i].TAG_ROB].destino = UF[i].opa;
             }
             // Actualiza linea ROB, x=ROB.UF[i].TAG_ROB con
             // ALU, ld: ROB[x].valor = UF[i].res y se valida con el resto de campos de ROB
             // sd: ROB.destino =UF[i].opb y ROB[x].valor = opb y se valida en el resto de campos de ROB
             //  Dejar libre UF. Poner todo a 0s
-            ROB[UF[i].TAG_ROB].uso = 0;
-            ROB[UF[i].TAG_ROB].cont_ciclos = 0;
-            ROB[UF[i].TAG_ROB].TAG_ROB = 0;
-            ROB[UF[i].TAG_ROB].opa = 0;
-            ROB[UF[i].TAG_ROB].opb = 0;
-            ROB[UF[i].TAG_ROB].operacion = 0;
-            ROB[UF[i].TAG_ROB].res = 0;
-            ROB[UF[i].TAG_ROB].res_ok = 0;
+            UF[i].uso = 0;
+            UF[i].cont_ciclos = 0;
+            UF[i].TAG_ROB = 0;
+            UF[i].opa = 0;
+            UF[i].opb = 0;
+            UF[i].operacion = 0;
+            UF[i].res = 0;
+            UF[i].res_ok = 0;
             /* resultado
             /* se ha escrito un dato. No se pueden escribir más. */
             bucle = 1;          // no habrá más iteraciones del bucle

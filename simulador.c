@@ -438,3 +438,83 @@ void Etapa_ID_ISS()
         //  Actualizar PC para que apunte siguiente instrucción PC + 1 y el número de instrucciones leídas inst_prog - 1
     }
 }
+
+int Carga_programa(instruccion_t *memoria_instrucciones){
+  /* strtok es utilizado como splitter para strings */
+  // El formato del fichero no debe contener espacio entre los operandos
+  FILE *archivo = fopen(ARCHIVO_INSTRUCCIONES, "r");
+  char buff[MAX_BUFF];
+  int instrucciones = 0;
+
+  while( fgets(buff, MAX_BUFF, archivo) ){ // Para cada linea de fichero
+    char *linea = strtok(buff, "\n"); // Obtiene la linea de fichero
+    char *tipo_s = strtok(linea, " "); // Separamos el tipo de instruccion
+    char *operandos_s = strtok(NULL, " "); // de los operandos
+    int tipo = -1; // tipo de instruccion para anadir al struct
+
+    instruccion_t instruccion;
+    int isLoad;  // variable para evitar una llamada a strcmp
+
+    // instruccion del tipo carga o escritura
+    if ( ! (isLoad = strcmp(tipo_s, "ld")) || !strcmp(tipo_s, "sd") ){
+      if (!isLoad) tipo = ld;
+      else tipo = sd;
+
+      char *rt = strtok(operandos_s, ",");
+      char *inm_y_rs = strtok(NULL, ",");
+      
+      char *inm = strtok(inm_y_rs, "(");
+      char *rs = strtok(NULL, "(");
+
+      int rt_int = atoi(&rt[1]);
+      int rs_int = atoi(&rs[1]);
+      int inm_int = atoi(inm);
+
+      instruccion.rd = -1;
+      instruccion.rs = rs_int;
+      instruccion.rt = rt_int;
+      instruccion.inmediato = inm_int;     
+
+    }else{ // instruccion aritmetica
+      if(!strcmp(tipo_s, "fadd")) tipo = add; // instruccion add
+      else if (!strcmp(tipo_s, "fsub")) tipo = sub; // instruccion sub
+      else if (!strcmp(tipo_s, "fmult")) tipo = mult; // instruccion mult
+
+      char *rd = strtok(operandos_s, ",");
+      char *rs = strtok(NULL, ",");
+      char *rt = strtok(NULL, ",");
+      
+      int rd_int = atoi(&rd[1]);
+      int rs_int = atoi(&rs[1]);
+      int rt_int = atoi(&rt[1]);
+
+      instruccion.rd = rd_int;
+      instruccion.rs = rs_int;
+      instruccion.rt = rt_int;
+      instruccion.inmediato = 0;
+    }     
+    
+    instruccion.cod = tipo;
+    memoria_instrucciones[instrucciones++] = instruccion;
+
+    if (instrucciones == INS) break; // Descartamos las demas instrucciones
+  }
+
+  return instrucciones;
+}
+
+void imprime_memoria_inst(int n_instrucciones, *instruccion_t mem_instrucciones){
+    int i;
+    puts("************");
+    for(i = 0; i < n_instrucciones; i++){
+        printf("Instrucción %d\n", i+1);
+
+        printf("Cod: %d\n", mem_instrucciones[i].cod);
+        printf("Rd: %d\n",  mem_instrucciones[i].rd);
+        printf("Rs: %d\n",  mem_instrucciones[i].rs);
+        printf("Rt: %d\n",  mem_instrucciones[i].rt);
+        printf("Inmediato: %d\n", mem_instrucciones[i].inmediato);
+
+        puts("************");
+    }
+}

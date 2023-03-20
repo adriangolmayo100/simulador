@@ -92,34 +92,6 @@ ROB_t ROB[INS];                           /* Bufer de reordenamiento */
 int inst_prog;                            /* total instrucciones programa */
 int inst_rob = 0;                         /* instrucciones en rob */
 
-int main(int argc, char *argv[])
-{
-    // Inicialización del simulador
-    Carga_programa(inst_prog, memoria_instrucciones);
-    Inicializar_ER(ER);
-    Inicializar_ROB(ROB);
-    Inicializar_Banco_registros(banco_registros);
-    Inicializar_memoria_datos(memoria_datos);
-    // Simulación. Bucle que se ejecuta mientras haya instrucciones en el ROB e instrucciones en la memoria de instrucciones
-    while ((inst_rob > 0) || (inst_prog > 0))
-    { // En un ciclo de reloj se ejecutan las 5 etapas de procesamiento de una instrucción
-        // Ejecutar cada una de las etapas.
-        // Omitimos IF. La instrucción es leída directamente desde la memoria_instrucciones y se inserta en la ER correspondiente
-        // Cada iteración del bucle simula las diferentes etapas de ejecución de la instrucción que se ejecutan en paralelo
-        // Ejectuar las etapas en ese orden.
-        Etapa_commit();
-        Etapa_WB();
-        Etapa_EX();
-        Etapa_ID_ISS();
-        ciclo = ciclo + 1;
-        // incrementamos contador de ciclo
-
-        // Mostrar el contenido de las distintas estructuras para ver cómo evoluciona la simulación
-        Mostrar_ER(ER);
-        Mostrar_ROB(ROB);
-        Mostrar_Banco_Registros(banco_registros);
-    } // while
-} // main
 void Inicializar_ER(ER_t **ER)
 {
     int i = 0, j = 0;
@@ -554,3 +526,31 @@ void Etapa_WB()
             puts("************");
         }
     }
+    int main(int argc, char *argv[])
+    {
+        // Inicialización del simulador
+        Carga_programa(inst_prog, memoria_instrucciones);
+        Inicializar_ER(ER);
+        Inicializar_ROB(ROB);
+        Inicializar_Banco_registros(banco_registros);
+        Inicializar_memoria_datos(memoria_datos);
+        // Simulación. Bucle que se ejecuta mientras haya instrucciones en el ROB e instrucciones en la memoria de instrucciones
+        while ((inst_rob > 0) || (inst_prog > 0))
+        { // En un ciclo de reloj se ejecutan las 5 etapas de procesamiento de una instrucción
+            // Ejecutar cada una de las etapas.
+            // Omitimos IF. La instrucción es leída directamente desde la memoria_instrucciones y se inserta en la ER correspondiente
+            // Cada iteración del bucle simula las diferentes etapas de ejecución de la instrucción que se ejecutan en paralelo
+            // Ejectuar las etapas en ese orden.
+            Etapa_commit();
+            Etapa_WB();
+            Etapa_EX();
+            Etapa_ID_ISS();
+            ciclo = ciclo + 1;
+            // incrementamos contador de ciclo
+
+            // Mostrar el contenido de las distintas estructuras para ver cómo evoluciona la simulación
+            Mostrar_ER(ER);
+            Mostrar_ROB(ROB);
+            Mostrar_Banco_Registros(banco_registros);
+        } // while
+    }     // main

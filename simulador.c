@@ -239,36 +239,53 @@ void Etapa_WB()
     // *en el campo opa/opb se pone UF[i].res y en opa_ok/opb_ok se pone un 1
     // *en el campo clk_tick_ok_a y clk_tick_ok_b se actualiza ciclo
     // Si no hay ninguno resultado disponible, no se hace nada
-    int i = 0;     // contador de unidades funcionales
-    int bucle = 0; // controla salir del bucle cuando encuentra un resultado valido. Solo WB un resultado
+    int i = 0, j = 0; // contador de unidades funcionales
+    int bucle = 0;    // controla salir del bucle cuando encuentra un resultado valido. Solo WB un resultado
     while (bucle == 0 && i < TOTAL_UF)
     { // busca resultado valido en todas las UF. El primero que encuentra lo escribe en ROB y actualiza ER
         if (UF[i].uso == 1 && UF[i].res_ok == 1 && UF[i].clk_tick_ok < ciclo)
         {
+            ROB[UF[i].TAG_ROB].valor = UF[i].res;
+            ROB[UF[i].TAG_ROB].valor_ok = 1;
+            ROB[UF[i].TAG_ROB].clk_tick_ok = ciclo;
+            if (ROB[UF[i].TAG_ROB].instruccion == sd)
+            {
+                ROB[UF[i].TAG_ROB].destino = UF[i].op_a;
+            }
             // Actualiza linea ROB, x=ROB.UF[i].TAG_ROB con
             // ALU, ld: ROB[x].valor = UF[i].res y se valida con el resto de campos de ROB
             // sd: ROB.destino =UF[i].opb y ROB[x].valor = opb y se valida en el resto de campos de ROB
             //  Dejar libre UF. Poner todo a 0s
+            ROB[UF[i].TAG_ROB].uso = 0;
+            ROB[UF[i].TAG_ROB].cont_ciclos = 0;
+            ROB[UF[i].TAG_ROB].TAG_ROB = 0;
+            ROB[UF[i].TAG_ROB].opa = 0;
+            ROB[UF[i].TAG_ROB].opb = 0;
+            ROB[UF[i].TAG_ROB].operacion = 0;
+            ROB[UF[i].TAG_ROB].res = 0;
+            ROB[UF[i].TAG_ROB].res_ok = 0;
+            /* resultado
             /* se ha escrito un dato. No se pueden escribir más. */
-            bucle = 1; // no habrá más iteraciones del bucle
-            // actualizar estaciones de reserva donde hay líneas que esperan ese resultado.
-            for (k = 0; k < TOTAL_UF; k++)
-            {                       // bucle para recorrer todas las ER
-                fin = p_er_cola[k]; // puntero al final de la ER
-                for (j = 0; j < fin; j++)
-                { // una iteración por línea de ER ocupada de ER[k]. Siempre empieza en 0 (posibilidad de que no sea así)
-                    /*Si operando depende de ese resultado */
-                    if (ER[k][j].busy == 1)
-                    { // si la línea está ocupada.
-                        if ((ER[k][j].opa_ok == 0) && (ER[k][j].opa == UF[i].TAG_ROB))
-                        { // si opa no disponible y depende de TAG_ROB
-                          // Actualizar operando a (valor, ok y ciclo)
-                        } // opa
-                        if (ER[k][j].opb_ok == 0 && ER[k][j].opb == id)
-                        { // Si operando b depende de ese resultado
-                          // Actualizar operando b (valor, ok y ciclo)
+            bucle = 1;          // no habrá más iteraciones del bucle
+                                // actualizar estaciones de reserva donde hay líneas que esperan ese resultado.
+                                // bucle para recorrer todas las ER
+            fin = p_er_cola[i]; // puntero al final de la ER
+            for (j = 0; j < fin; j++)
+            { // una iteración por línea de ER ocupada de ER[k]. Siempre empieza en 0 (posibilidad de que no sea así)
+                /*Si operando depende de ese resultado */
+                if (ER[i][j].busy)
+                { // si la línea está ocupada.
+                    if ((ER[i][j].opa_ok == 0) && (ER[i][j].opa == UF[i].TAG_ROB))
+                    {
+                        ER[i][j].opa = ROB[UF[i].TAG_ROB].valor;
+                        ER[i][j].opa_ok == 1;
+                        if (ER[i][j].opb_ok == 0 && ER[k][j].opb == id)
+                        {
+                            ER[i][j].opb = ROB[UF[i].TAG_ROB].valor;
+                            ER[i][j].opb_ok == 1;
                         } // opb
                     }
+                    break;
                 } // fin for líneas ER
             }     // end for todas ER
         }
@@ -439,105 +456,183 @@ void Etapa_ID_ISS()
             else {
                 ER[inst.cod][index_RS].opa_ok=ROB[banco_registros[inst.rs].TAG_ROB];
                 ER[inst.cod][index_RS].clk_tick_ok_a=ROB[banco_registros[inst.rs].clk_tick_ok];
+
             }
         }
-        else{
-            ROB[p_rob_cola].destino=inst.rd;
-            if (banco_registros[inst.rs].ok==1) ER[inst.cod][index_RS].opa=0;
-            else {
-                ER[inst.cod][index_RS].opa_ok=ROB[banco_registros[inst.rs].TAG_ROB];
-                ER[inst.cod][index_RS].clk_tick_ok_a=ROB[banco_registros[inst.rs].clk_tick_ok];
-            } 
-            if (banco_registros[inst.rt].ok==1) ER[inst.cod][index_RS].opb=0;
-            else {
-                ER[inst.cod][index_RS].opb_ok=ROB[banco_registros[inst.rt].TAG_ROB];
-                ER[inst.cod][index_RS].clk_tick_ok_b=ROB[banco_registros[inst.rt].clk_tick_ok];
-            }
-        }
-        p_rob_cola++;
-        //  Si es válido, cargarlo en ER sino poner línea de ROB que proporcionará su valor cuando se ejecute la instrucción de quien dependey poner
-        // operando no válido
-        // Actualizamos registro destino (inst.rd) como no válido y línea de ROB donde está la instrucción que lo genera
-        //  Actualizar PC para que apunte siguiente instrucción PC + 1 y el número de instrucciones leídas inst_prog - 1
     }
-}
+    void Etapa_ID_ISS()
+    {
+        // 1.- Lee una instrucción de la directamente de la memoria de instrucciones y la inserta en la ER correspondiente.
+        //  instrucción apuntada por PC: inst = memoria_instrucciones[PC]
+        //  2.- Identifica el tipo de instrucción y selecciona la ER para insertarla. Será función del código de operación de la instrucción
+        //  Si inst.cod == 1 o 2 → tipo =ALU
+        //  Si inst.cod == 3 o 4 → tipo = MEM
+        //  SI inst.cod == 4 → tipo = MULT
+        //
+        // 3.- Añadir instrucción en ROB en la posición indicada en p_rob_cola. Actualiza todos sus campos
+        //  Actualiza p_rob_cola + 1
+        //  4.- Utiliza el puntero p_er_cola(tipo) que apunta a la cola de ER[tipo] para almacenarla en esa posición.
+        //  Actualiza todos sus campos:
+        //  * opa y opb. Busca en registros rs y rt
+        //  * Si el campo ok de esos registros está a 1 y clk_tick_ok es menor que el ciclo actual,
+        //  se carga su contenido en los campos opa y opb de la ER, se validan y se actualiza el ciclo (operandos válidos)
+        //  * En caso contrario se carga en opa y/o opb el campo TAG_ROB de esos registros, y no se validan (operandos no válidos)
+        //  *Etiqueta de la línea de ROB donde ha almacenado la instrucción.
+        //  *Actualizar p_er_cola[tipo] + 1
+        // 4.- Invalidar contenido del registro destino poniendo campo ok a 0 y en TAG_ROB la línea de ROB donde se ha almacenado dicha instrucción.
+        // 5. Actualiza PC + 1 y inst_prog - 1
+        if (inst_prog > 0)
+        { // leer la instrucción apuntada por PC y almacenarla en ER y ROB
+            instruct_t inst = memoria_instrucciones[PC];
+            ROB[p_rob_cola].TAG_ROB = p_rob_cola;
+            ROB[p_rob_cola].instruccion = inst.cd;
+            ROB[p_rob_cola].busy = 0;
+            ROB[p_rob_cola].destino = inst.rd;
+            ROB[p_rob_cola].valor = 0;
+            ROB[p_rob_cola].valor_ok = 0;
+            ROB[p_rob_cola].clk_tick_ok = 0;
+            ROB[p_rob_cola].etapa = 0;
+            // Añadir instrucción en ROB[p_rob_cola] y actualizar todos sus campos.
+            // actualizar p_rob_cola + 1
+            // Actualizar línea de la ER correspondiente según tipo de instrucción, ER[p_er_cola[tipo]], donde tipo se obtiene a partir del código de operación.
+            int index_RS = p_er_cola[inst.cod]++;
+            ER[inst.cod][p_er_cola[inst.cod]].busy = 0;
+            ER[inst.cod][p_er_cola[inst.cod]].operacion = 0;
+            ER[inst.cod][p_er_cola[inst.cod]].opa = 0;
+            ER[inst.cod][p_er_cola[inst.cod]].opa_ok = 0;
+            ER[inst.cod][p_er_cola[inst.cod]].clk_tick_ok_a = 0;
+            ER[inst.cod][p_er_cola[inst.cod]].opb = 0;
+            ER[inst.cod][p_er_cola[inst.cod]].opb_ok = 0;
+            ER[inst.cod][p_er_cola[inst.cod]].clk_tick_ok_b = 0;
+            ER[inst.cod][p_er_cola[inst.cod]].inmediato = inst.inmediato;
+            ER[inst.cod][p_er_cola[inst.cod]].TAG_ROB = p_rob_cola;
+            //  p_er_cola[tipo] es el puntero que apunta a la línea donde se tiene que insertar la instrucción
+            //  Todas las instrucciones excepto ld: buscar operandos a y b en registros y/o ROB. Load solo busca operando a
+            if (inst.cod == 3)
+            {
+                ROB[p_rob_cola].destino = inst.rt;
+                if (banco_registros[inst.rs].ok == 1)
+                    ER[inst.cod][index_RS].opa = 0;
+                else
+                {
+                    ER[inst.cod][index_RS].opa_ok = ROB[banco_registros[inst.rs].TAG_ROB];
+                }
+            }
+            else
+            {
+                ROB[p_rob_cola].destino = inst.rd;
+                if (banco_registros[inst.rs].ok == 1)
+                    ER[inst.cod][index_RS].opa = 0;
+                else
+                {
+                    ER[inst.cod][index_RS].opa_ok = ROB[banco_registros[inst.rs].TAG_ROB];
+                }
+                if (banco_registros[inst.rt].ok == 1)
+                    ER[inst.cod][index_RS].opb = 0;
+                else
+                {
+                    ER[inst.cod][index_RS].opb_ok = ROB[banco_registros[inst.rt].TAG_ROB];
+                }
+            }
+            ROB[p_rob_cola].valor_ok = 0;
+            p_rob_cola++;
+            //  Si es válido, cargarlo en ER sino poner línea de ROB que proporcionará su valor cuando se ejecute la instrucción de quien dependey poner
+            // operando no válido
+            banco_registros[inst.rd].ok = 0;
+            PC++;
+            // Actualizamos registro destino (inst.rd) como no válido y línea de ROB donde está la instrucción que lo genera
+            //  Actualizar PC para que apunte siguiente instrucción PC + 1 y el número de instrucciones leídas inst_prog - 1
+        }
+    }
 
-int Carga_programa(instruccion_t *memoria_instrucciones){
-  /* strtok es utilizado como splitter para strings */
-  // El formato del fichero no debe contener espacio entre los operandos
-  FILE *archivo = fopen(ARCHIVO_INSTRUCCIONES, "r");
-  char buff[MAX_BUFF];
-  int instrucciones = 0;
+    int Carga_programa(instruccion_t * memoria_instrucciones)
+    {
+        /* strtok es utilizado como splitter para strings */
+        // El formato del fichero no debe contener espacio entre los operandos
+        FILE *archivo = fopen(ARCHIVO_INSTRUCCIONES, "r");
+        char buff[MAX_BUFF];
+        int instrucciones = 0;
 
-  while( fgets(buff, MAX_BUFF, archivo) ){ // Para cada linea de fichero
-    char *linea = strtok(buff, "\n"); // Obtiene la linea de fichero
-    char *tipo_s = strtok(linea, " "); // Separamos el tipo de instruccion
-    char *operandos_s = strtok(NULL, " "); // de los operandos
-    int tipo = -1; // tipo de instruccion para anadir al struct
+        while (fgets(buff, MAX_BUFF, archivo))
+        {                                          // Para cada linea de fichero
+            char *linea = strtok(buff, "\n");      // Obtiene la linea de fichero
+            char *tipo_s = strtok(linea, " ");     // Separamos el tipo de instruccion
+            char *operandos_s = strtok(NULL, " "); // de los operandos
+            int tipo = -1;                         // tipo de instruccion para anadir al struct
 
-    instruccion_t instruccion;
-    int isLoad;  // variable para evitar una llamada a strcmp
+            instruccion_t instruccion;
+            int isLoad; // variable para evitar una llamada a strcmp
 
-    // instruccion del tipo carga o escritura
-    if ( ! (isLoad = strcmp(tipo_s, "ld")) || !strcmp(tipo_s, "sd") ){
-      if (!isLoad) tipo = ld;
-      else tipo = sd;
+            // instruccion del tipo carga o escritura
+            if (!(isLoad = strcmp(tipo_s, "ld")) || !strcmp(tipo_s, "sd"))
+            {
+                if (!isLoad)
+                    tipo = ld;
+                else
+                    tipo = sd;
 
-      char *rt = strtok(operandos_s, ",");
-      char *inm_y_rs = strtok(NULL, ",");
-      
-      char *inm = strtok(inm_y_rs, "(");
-      char *rs = strtok(NULL, "(");
+                char *rt = strtok(operandos_s, ",");
+                char *inm_y_rs = strtok(NULL, ",");
 
-      int rt_int = atoi(&rt[1]);
-      int rs_int = atoi(&rs[1]);
-      int inm_int = atoi(inm);
+                char *inm = strtok(inm_y_rs, "(");
+                char *rs = strtok(NULL, "(");
 
-      instruccion.rd = -1;
-      instruccion.rs = rs_int;
-      instruccion.rt = rt_int;
-      instruccion.inmediato = inm_int;     
+                int rt_int = atoi(&rt[1]);
+                int rs_int = atoi(&rs[1]);
+                int inm_int = atoi(inm);
 
-    }else{ // instruccion aritmetica
-      if(!strcmp(tipo_s, "fadd")) tipo = add; // instruccion add
-      else if (!strcmp(tipo_s, "fsub")) tipo = sub; // instruccion sub
-      else if (!strcmp(tipo_s, "fmult")) tipo = mult; // instruccion mult
+                instruccion.rd = -1;
+                instruccion.rs = rs_int;
+                instruccion.rt = rt_int;
+                instruccion.inmediato = inm_int;
+            }
+            else
+            { // instruccion aritmetica
+                if (!strcmp(tipo_s, "fadd"))
+                    tipo = add; // instruccion add
+                else if (!strcmp(tipo_s, "fsub"))
+                    tipo = sub; // instruccion sub
+                else if (!strcmp(tipo_s, "fmult"))
+                    tipo = mult; // instruccion mult
 
-      char *rd = strtok(operandos_s, ",");
-      char *rs = strtok(NULL, ",");
-      char *rt = strtok(NULL, ",");
-      
-      int rd_int = atoi(&rd[1]);
-      int rs_int = atoi(&rs[1]);
-      int rt_int = atoi(&rt[1]);
+                char *rd = strtok(operandos_s, ",");
+                char *rs = strtok(NULL, ",");
+                char *rt = strtok(NULL, ",");
 
-      instruccion.rd = rd_int;
-      instruccion.rs = rs_int;
-      instruccion.rt = rt_int;
-      instruccion.inmediato = 0;
-    }     
-    
-    instruccion.cod = tipo;
-    memoria_instrucciones[instrucciones++] = instruccion;
+                int rd_int = atoi(&rd[1]);
+                int rs_int = atoi(&rs[1]);
+                int rt_int = atoi(&rt[1]);
 
-    if (instrucciones == INS) break; // Descartamos las demas instrucciones
-  }
+                instruccion.rd = rd_int;
+                instruccion.rs = rs_int;
+                instruccion.rt = rt_int;
+                instruccion.inmediato = 0;
+            }
 
-  return instrucciones;
-}
+            instruccion.cod = tipo;
+            memoria_instrucciones[instrucciones++] = instruccion;
 
-void imprime_memoria_inst(int n_instrucciones, *instruccion_t mem_instrucciones){
-    int i;
-    puts("************");
-    for(i = 0; i < n_instrucciones; i++){
-        printf("Instrucción %d\n", i+1);
+            if (instrucciones == INS)
+                break; // Descartamos las demas instrucciones
+        }
 
-        printf("Cod: %d\n", mem_instrucciones[i].cod);
-        printf("Rd: %d\n",  mem_instrucciones[i].rd);
-        printf("Rs: %d\n",  mem_instrucciones[i].rs);
-        printf("Rt: %d\n",  mem_instrucciones[i].rt);
-        printf("Inmediato: %d\n", mem_instrucciones[i].inmediato);
+        return instrucciones;
+    }
 
+    void imprime_memoria_inst(int n_instrucciones, *instruccion_t mem_instrucciones)
+    {
+        int i;
         puts("************");
+        for (i = 0; i < n_instrucciones; i++)
+        {
+            printf("Instrucción %d\n", i + 1);
+
+            printf("Cod: %d\n", mem_instrucciones[i].cod);
+            printf("Rd: %d\n", mem_instrucciones[i].rd);
+            printf("Rs: %d\n", mem_instrucciones[i].rs);
+            printf("Rt: %d\n", mem_instrucciones[i].rt);
+            printf("Inmediato: %d\n", mem_instrucciones[i].inmediato);
+
+            puts("************");
+        }
     }
-}

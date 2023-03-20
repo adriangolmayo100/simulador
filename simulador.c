@@ -276,8 +276,7 @@ void Etapa_WB()
             i = i + 1; // siguiente UF
     }                  // while todas UFs
 }
-void Etapa_EX()
-{
+void Etapa_EX(){
     // En todas las UF:
     // 1. En todas las UF que están en uso:
     // * Incremento un ciclo de operación.
@@ -292,10 +291,17 @@ void Etapa_EX()
     // Consideración: en esta plantilla no se tiene en cuenta las líneas libres de las ERs no ocupadas.
     int i = 0;      // contador unidades funcionales
     int enviar = 0; // no se ha enviado ninguna instrucción a ejecutar
-    while (i < TOTAL_UF)
-    { // revisa todas las UFs. Si está en uso, Incrementa ciclo.
+    int max;
+    int j, fin;
+
+    UF_t unidad;
+    ER_t estacionR;
+
+    while (i < TOTAL_UF){ 
+        // revisa todas las UFs. Si está en uso, Incrementa ciclo.
         // Si es el último, generar resultado y validarlo. si no envía una instrucción a ejecutar (si la hay de ese tipo).
-        uf_ = UF[i];
+        unidad = UF[i];
+        
         // Establecer ciclos máximos para cada UF
         if (i == 0)
             max = CICLOS_ALU;
@@ -303,19 +309,34 @@ void Etapa_EX()
             max = CICLOS_MEM;
         else if (i == 2)
             max = CICLOS_MULT;
-        If((uf_.uso == 1))
-        { // si está en uso, se incrementa el ciclo y no se pueden enviar otra instrucción.
-            If((uf_.cont_ciclos < max &&))
-            {
-                uf_.cont_ciclos = uf_.cont_ciclos + 1 // incrementar el ciclo
-                                  If(uf_.cont_ciclos == max)
-                {
-                    // si se ha finalizado la operación generar resultado, validarlo, actualizar ciclo
-                }
+
+        if(unidad.uso){ // si está en uso, se incrementa el ciclo y no se pueden enviar otra instrucción.
+            
+            if(unidad.cont_ciclos < max){
+                unidad.cont_ciclos++;
+            
+            }else{
+                unidad.res = unidad.opa + unidad.opb;
+                unidad.res_ok = 1;
+                unidad.clk_tick_ok = ciclo;
+                /*
+                unidad.uso = 0; // WB
+                unidad.cont_ciclos = 0; //WB
+                */
+
             }
-        }
-        else if (enviar == 0)
-        { // no está en uso y todavía no se ha enviado ninguna instrucción, se comprueba si se puede enviar alguna de este tipo
+            
+        }else if (! enviar){ // no está en uso y todavía no se ha enviado ninguna instrucción, se comprueba si se puede enviar alguna de este tipo
+            
+            estacionR = ER[i];
+            fin = p_er_cola[i];
+            j = 0;
+
+            while ( (! enviar) && ( j < fin ) ){
+                
+            }
+            
+            /*
             er_ = ER[i];
             fin = p_er_cola[i]; // última línea insertada
             j = 0;              // contador de líneas de ER[i] desde 0 hasta fin
@@ -356,10 +377,12 @@ void Etapa_EX()
                             // limpiarlínea er_.[i]
                         }
                     }      // while er_
-                }          // if principal uf
-                i = i + 1; // siguiente UF aunque se haya enviado una instrucción hay que comprobar las que están en uso para incrementar ciclo
+                }  
+                        // if principal uf
+                i++; // siguiente UF aunque se haya enviado una instrucción hay que comprobar las que están en uso para incrementar ciclo
+            
             }              // while UF
-        }
+        }*/
     }
 }
 void Etapa_ID_ISS()

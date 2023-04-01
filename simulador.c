@@ -562,24 +562,101 @@ int Carga_programa(instruccion_t *memoria_instrucciones)
 
     return instrucciones;
 }
-
-void imprime_memoria_inst(int n_instrucciones, instruccion_t *mem_instrucciones)
-{
+#ifdef DEBUG
+void imprimeCPU(){
+    printf("Ciclo%d>\n", ciclo);
+    printf("Memoria Instrucciones\n");
+    imprime_memoria_inst();
+    printf("Memoria Datos\n");
+    imprime_memoria_datos();
+    printf("ROB\n");
+    imprime_rob();
+    printf("ER\n");
+    imprime_ER();
+    printf("UF\n");
+    imprime_UF();
+    printf("Banco de registros\n");
+    imprime_Banco_registros();
+}
+void imprime_memoria_inst(){
     int i;
-    puts("************");
-    for (i = 0; i < n_instrucciones; i++)
+    printf("INST\tCOD\tRT\tRS\tRD\tINM\n");
+    for (i = 0; i < INS; i++)
     {
-        printf("Instrucción %d\n", i + 1);
+        printf("%d\t", i + 1);
+        printf("%d\t", memoria_instrucciones[i].cod);
+        printf("%d\t", memoria_instrucciones[i].rt);
+        printf("%d\t", memoria_instrucciones[i].rs);
+        printf("%d\t", memoria_instrucciones[i].rd);
+        printf("%d\n", memoria_instrucciones[i].inmediato);
+    }
+    puts("***********************");
+}
+void imprime_memoria_datos(){
+    int i;
+    for (i = 0; i < DAT; i++)
+        printf("Memoria datos [%d]: %d\n", i, memoria_datos[i]);
+    puts("***********************");
+}
 
-        printf("Cod: %d\n", mem_instrucciones[i].cod);
-        printf("Rd: %d\n", mem_instrucciones[i].rd);
-        printf("Rs: %d\n", mem_instrucciones[i].rs);
-        printf("Rt: %d\n", mem_instrucciones[i].rt);
-        printf("Inmediato: %d\n", mem_instrucciones[i].inmediato);
-
-        puts("************");
+void imprime_rob(){
+    int i;
+    printf("TAG\tBUSY\tCLK_TICK_OK\tDESTINO\tETAPA\tINSTRUCCION\tVALOR\tVALOR_OK\n");
+    for(i = 0; i < INS; i++)
+        printf("%d %d %d %d %d %d %d %d",ROB[i].TAG_ROB, [i].busy, ROB[i].clk_tick_ok, ROB[i].destino, ROB[i].etapa,
+        ROB[i].instruccion,ROB[i].valor,ROB[i].valor_ok );        
+    
+    puts("***********************");
+}
+void imprime_ER(){
+    int i,j;
+    for(i = 0; i < TOTAL_UF; i++){
+        printf("Estacion %d\n", i);
+        for(j = 0; j < INS; j++){
+            printf("TAG_ROB\tOP\tBUSY\tOpA\tCLK_OpA\tOpB\tCLK_OpB\tOpB_OK\tOpB_OK\tINM\n");
+            printf("%d\t"ER[i][j].TAG_ROB);
+            printf("%d\t"ER[i][j].operacion);
+            printf("%d\t"ER[i][j].busy);
+            printf("%d\t"ER[i][j].opa);            
+            printf("%d\t"ER[i][j].clk_tick_ok_a);
+            printf("%d\t"ER[i][j].opb);            
+            printf("%d\t"ER[i][j].clk_tick_ok_b);
+            printf("%d\t"ER[i][j].opa_ok);
+            printf("%d\t"ER[i][j].opb_ok);
+            printf("%d\n"ER[i][j].inmediato);
+        }
     }
 }
+
+void imprime_UF(){
+    int i;
+    printf("TAG_ROB\tUSO\tOPERACION\tCONT_CICLOS\tOpA\tOpB\tRES\tRES_OK\n")
+    for(i=0;i<TOTAL_UF;i++){
+        printf("%d\t", UF[i].TAG_ROB);
+        printf("%d\t", UF[i].uso);
+        printf("%d\t", UF[i].operacion);
+        printf("%d\t", UF[i].cont_ciclos);
+        printf("%d\t", UF[i].opa);
+        printf("%d\t", UF[i].opb);
+        printf("%d\t", UF[i].res);
+        printf("%d\n", UF[i].res_ok);
+    }
+ 
+}
+
+void imprime_Banco_registros(){
+    int i;
+    printf("TAG_ROB\tOK\tCLK_OK\tCONTENIDO\n");
+    for (i = 0; i < REG; i++)
+    {
+        printf("%d\t", banco_registros[i].TAG_ROB);
+        printf("%d\t", banco_registros[i].ok);
+        printf("%d\t", banco_registros[i].clk_tick_ok);
+        printf("%d\n", banco_registros[i].contenido);
+    }
+}
+#endif
+
 int main(int argc, char *argv[])
 {
     // Inicialización del simulador
@@ -599,12 +676,11 @@ int main(int argc, char *argv[])
         Etapa_WB();
         Etapa_EX();
         Etapa_ID_ISS();
-        ciclo = ciclo + 1;
-        // incrementamos contador de ciclo
+        ciclo++;
 
-        // Mostrar el contenido de las distintas estructuras para ver cómo evoluciona la simulación
-        Mostrar_ER(ER);
-        Mostrar_ROB(ROB);
-        Mostrar_Banco_Registros(banco_registros);
+        #ifdef DEBUG
+        imprimeCPU();
+        #endif
+
     } // while
 } // main

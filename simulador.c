@@ -1,6 +1,7 @@
 // Juego de instrucciones. código de operación
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #define ARCHIVO_INSTRUCCIONES "file.txt"
 #define MAX_BUFF 32
 #define add 1
@@ -96,7 +97,7 @@ ROB_t ROB[INS];                           /* Bufer de reordenamiento */
 int inst_prog;                            /* total instrucciones programa */
 int inst_rob = 0;                         /* instrucciones en rob */
 
-void Inicializar_ER(ER_t **ER)
+void Inicializar_ER(ER_t ER[][INS])
 {
     int i = 0, j = 0;
     for (i = 0; i < TOTAL_UF; i++)
@@ -489,7 +490,7 @@ void Etapa_ID_ISS()
     }
 }
 
-int Carga_programa(instruccion_t *memoria_instrucciones)
+int Carga_programa()
 {
     /* strtok es utilizado como splitter para strings */
     // El formato del fichero no debe contener espacio entre los operandos
@@ -562,22 +563,8 @@ int Carga_programa(instruccion_t *memoria_instrucciones)
 
     return instrucciones;
 }
-#ifdef DEBUG
-void imprimeCPU(){
-    printf("Ciclo%d>\n", ciclo);
-    printf("Memoria Instrucciones\n");
-    imprime_memoria_inst();
-    printf("Memoria Datos\n");
-    imprime_memoria_datos();
-    printf("ROB\n");
-    imprime_rob();
-    printf("ER\n");
-    imprime_ER();
-    printf("UF\n");
-    imprime_UF();
-    printf("Banco de registros\n");
-    imprime_Banco_registros();
-}
+
+
 void imprime_memoria_inst(){
     int i;
     printf("INST\tCOD\tRT\tRS\tRD\tINM\n");
@@ -603,7 +590,7 @@ void imprime_rob(){
     int i;
     printf("TAG\tBUSY\tCLK_TICK_OK\tDESTINO\tETAPA\tINSTRUCCION\tVALOR\tVALOR_OK\n");
     for(i = 0; i < INS; i++)
-        printf("%d %d %d %d %d %d %d %d",ROB[i].TAG_ROB, [i].busy, ROB[i].clk_tick_ok, ROB[i].destino, ROB[i].etapa,
+        printf("%d\t%d\t%d\t\t%d\t%d\t%d\t\t%d\t%d\n",ROB[i].TAG_ROB, ROB[i].busy, ROB[i].clk_tick_ok, ROB[i].destino, ROB[i].etapa,
         ROB[i].instruccion,ROB[i].valor,ROB[i].valor_ok );        
     
     puts("***********************");
@@ -614,23 +601,23 @@ void imprime_ER(){
         printf("Estacion %d\n", i);
         for(j = 0; j < INS; j++){
             printf("TAG_ROB\tOP\tBUSY\tOpA\tCLK_OpA\tOpB\tCLK_OpB\tOpB_OK\tOpB_OK\tINM\n");
-            printf("%d\t"ER[i][j].TAG_ROB);
-            printf("%d\t"ER[i][j].operacion);
-            printf("%d\t"ER[i][j].busy);
-            printf("%d\t"ER[i][j].opa);            
-            printf("%d\t"ER[i][j].clk_tick_ok_a);
-            printf("%d\t"ER[i][j].opb);            
-            printf("%d\t"ER[i][j].clk_tick_ok_b);
-            printf("%d\t"ER[i][j].opa_ok);
-            printf("%d\t"ER[i][j].opb_ok);
-            printf("%d\n"ER[i][j].inmediato);
+            printf("%d\t", ER[i][j].TAG_ROB);
+            printf("%d\t", ER[i][j].operacion);
+            printf("%d\t", ER[i][j].busy);
+            printf("%d\t", ER[i][j].opa);            
+            printf("%d\t", ER[i][j].clk_tick_ok_a);
+            printf("%d\t", ER[i][j].opb);            
+            printf("%d\t", ER[i][j].clk_tick_ok_b);
+            printf("%d\t", ER[i][j].opa_ok);
+            printf("%d\t", ER[i][j].opb_ok);
+            printf("%d\n", ER[i][j].inmediato);
         }
     }
 }
 
 void imprime_UF(){
     int i;
-    printf("TAG_ROB\tUSO\tOPERACION\tCONT_CICLOS\tOpA\tOpB\tRES\tRES_OK\n")
+    printf("TAG_ROB\tUSO\tOPERACION\tCONT_CICLOS\tOpA\tOpB\tRES\tRES_OK\n");
     for(i=0;i<TOTAL_UF;i++){
         printf("%d\t", UF[i].TAG_ROB);
         printf("%d\t", UF[i].uso);
@@ -655,12 +642,27 @@ void imprime_Banco_registros(){
         printf("%d\n", banco_registros[i].contenido);
     }
 }
-#endif
+
+void imprimeCPU(){
+    printf("Ciclo%d>\n", ciclo);
+    printf("Memoria Instrucciones\n");
+    imprime_memoria_inst();
+    printf("Memoria Datos\n");
+    imprime_memoria_datos();
+    printf("ROB\n");
+    imprime_rob();
+    printf("ER\n");
+    imprime_ER();
+    printf("UF\n");
+    imprime_UF();
+    printf("Banco de registros\n");
+    imprime_Banco_registros();
+}
 
 int main(int argc, char *argv[])
 {
     // Inicialización del simulador
-    Carga_programa(inst_prog, memoria_instrucciones);
+    //Carga_programa();
     Inicializar_ER(ER);
     Inicializar_ROB(ROB);
     Inicializar_Banco_registros(banco_registros);
@@ -678,9 +680,8 @@ int main(int argc, char *argv[])
         Etapa_ID_ISS();
         ciclo++;
 
-        #ifdef DEBUG
         imprimeCPU();
-        #endif
+
 
     } // while
 } // main

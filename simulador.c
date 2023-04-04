@@ -491,23 +491,24 @@ void Etapa_ID_ISS()
         linea_ER.opb_ok = 0;
         linea_ER.clk_tick_ok_b = 0;
         linea_ER.inmediato = inst.inmediato;
-        linea_ER.TAG_ROB = p_rob_cola;
+        linea_ER.TAG_ROB = linea.TAG_ROB;
+        ER[uf][index_RS]=linea_ER;
         //  p_er_cola[tipo] es el puntero que apunta a la línea donde se tiene que insertar la instrucción
         //  Todas las instrucciones excepto ld: buscar operandos a y b en registros y/o ROB. Load solo busca operando a
         if (inst.cod == 3)
         {
             linea.destino = inst.rt;
             if (banco_registros[inst.rs].ok == 1)
-                ER[inst.cod][index_RS].opa = banco_registros[inst.rs].contenido;
+                ER[uf][index_RS].opa = banco_registros[inst.rs].contenido;
             else
             {
                 int rob_rt = banco_registros[inst.rt].TAG_ROB;
                 if (ROB[rob_rt].valor_ok == 1)
-                    ER[inst.cod][index_RS].opa = ROB[rob_rt].valor;
+                    ER[uf][index_RS].opa = ROB[rob_rt].valor;
                 else
                 {
-                    ER[inst.cod][index_RS].opa_ok = ROB[rob_rt].TAG_ROB;
-                    ER[inst.cod][index_RS].clk_tick_ok_a = ROB[rob_rt].clk_tick_ok;
+                    ER[uf][index_RS].opa_ok = ROB[rob_rt].TAG_ROB;
+                    ER[uf][index_RS].clk_tick_ok_a = ROB[rob_rt].clk_tick_ok;
                 }
             }
         }
@@ -517,33 +518,32 @@ void Etapa_ID_ISS()
                 linea.destino = inst.rd;
 
             if (banco_registros[inst.rs].ok == 1)
-                ER[inst.cod][index_RS].opa = banco_registros[inst.rs].contenido;
+                ER[uf][index_RS].opa = banco_registros[inst.rs].contenido;
             else
             {
                 int rob_rt = banco_registros[inst.rt].TAG_ROB;
                 if (ROB[rob_rt].valor_ok == 1)
-                    ER[inst.cod][index_RS].opa = ROB[rob_rt].valor;
+                    ER[uf][index_RS].opa = ROB[rob_rt].valor;
                 else
                 {
-                    ER[inst.cod][index_RS].opa_ok = ROB[rob_rt].TAG_ROB;
-                    ER[inst.cod][index_RS].clk_tick_ok_a = ROB[rob_rt].clk_tick_ok;
+                    ER[uf][index_RS].opa_ok = ROB[rob_rt].TAG_ROB;
+                    ER[uf][index_RS].clk_tick_ok_a = ROB[rob_rt].clk_tick_ok;
                 }
             }
             if (banco_registros[inst.rs].ok == 1)
-                ER[inst.cod][index_RS].opa = banco_registros[inst.rs].contenido;
+                ER[uf][index_RS].opa = banco_registros[inst.rs].contenido;
             else
             {
                 int rob_rs = banco_registros[inst.rs].TAG_ROB;
                 if (ROB[rob_rs].valor_ok == 1)
-                    ER[inst.cod][index_RS].opb = ROB[rob_rs].valor;
+                    ER[uf][index_RS].opb = ROB[rob_rs].valor;
                 else
                 {
-                    ER[inst.cod][index_RS].opb_ok = ROB[rob_rs].TAG_ROB;
-                    ER[inst.cod][index_RS].clk_tick_ok_b = ROB[rob_rs].clk_tick_ok;
+                    ER[uf][index_RS].opb_ok = ROB[rob_rs].TAG_ROB;
+                    ER[uf][index_RS].clk_tick_ok_b = ROB[rob_rs].clk_tick_ok;
                 }
             }
         }
-        ER[inst.cod][index_RS]=linea_ER;
         inst_prog--;
         //  Si es válido, cargarlo en ER sino poner línea de ROB que proporcionará su valor cuando se ejecute la instrucción de quien dependey poner
         // operando no válido
@@ -629,87 +629,142 @@ int Carga_programa()
 void imprime_memoria_inst()
 {
     int i;
-    printf("INST\tCOD\tRT\tRS\tRD\tINM\n");
-    for (i = 0; i < INS; i++)
+    printf("+------+-----+----+----+----+-----+\n");
+    printf("| INST | COD | RT | RS | RD | INM |\n");
+    printf("+------+-----+----+----+----+-----+\n");
+    for (i = 0; i < inst_prog; i++)
     {
-        printf("%d\t", i + 1);
-        printf("%d\t", memoria_instrucciones[i].cod);
-        printf("%d\t", memoria_instrucciones[i].rt);
-        printf("%d\t", memoria_instrucciones[i].rs);
-        printf("%d\t", memoria_instrucciones[i].rd);
-        printf("%d\n", memoria_instrucciones[i].inmediato);
+        printf("| %4d | %3d | %2d | %2d | %2d | %3d |\n", i + 1, memoria_instrucciones[i].cod, memoria_instrucciones[i].rt, memoria_instrucciones[i].rs, memoria_instrucciones[i].rd, memoria_instrucciones[i].inmediato);
     }
-    puts("***********************");
+    printf("+------+-----+----+----+----+-----+\n");
+
+    // printf("INST\tCOD\tRT\tRS\tRD\tINM\n");
+    // for (i = 0; i < INS; i++)
+    // {
+    //     printf("%d\t", i + 1);
+    //     printf("%d\t", memoria_instrucciones[i].cod);
+    //     printf("%d\t", memoria_instrucciones[i].rt);
+    //     printf("%d\t", memoria_instrucciones[i].rs);
+    //     printf("%d\t", memoria_instrucciones[i].rd);
+    //     printf("%d\n", memoria_instrucciones[i].inmediato);
+    // }
+    // puts("***********************");
 }
 void imprime_memoria_datos()
 {
     int i;
-    for (i = 0; i < DAT; i++)
-        printf("Memoria datos [%d]: %d\n", i, memoria_datos[i]);
-    puts("***********************");
+    printf("+---------------------+\n");
+    printf("| MEMORIA DE DATOS     |\n");
+    printf("+---------------------+\n");
+    for (i = 0; i < DAT; i++) {
+        printf("| [%2d]  |  %8d |\n", i, memoria_datos[i]);
+    }
+    printf("+---------------------+\n");
+
+//     for (i = 0; i < DAT; i++)
+//         printf("Memoria datos [%d]: %d\n", i, memoria_datos[i]);
+//     puts("***********************");
 }
 
 void imprime_rob()
 {
     int i;
-    printf("TAG\tBUSY\tCLK_TICK_OK\tDESTINO\tETAPA\tINSTRUCCION\tVALOR\tVALOR_OK\n");
-    for (i = 0; i < INS; i++)
-        printf("%d\t%d\t%d\t\t%d\t%d\t%d\t\t%d\t%d\n", ROB[i].TAG_ROB, ROB[i].busy, ROB[i].clk_tick_ok, ROB[i].destino, ROB[i].etapa,
-               ROB[i].instruccion, ROB[i].valor, ROB[i].valor_ok);
+    printf("+-----+------+-------------+---------+-------+-------------+-------+----------+\n");
+    printf("| TAG | BUSY | CLK_TICK_OK | DESTINO | ETAPA | INSTRUCCION | VALOR | VALOR_OK |\n");
+    printf("+-----+------+-------------+---------+-------+-------------+-------+----------+\n");
+    for (i = 0; i < inst_prog; i++)
+    {
+        printf("| %3d | %4d | %11d | %7d | %5d | %11d | %5d | %8d |\n", ROB[i].TAG_ROB, ROB[i].busy, ROB[i].clk_tick_ok, ROB[i].destino, ROB[i].etapa,
+            ROB[i].instruccion, ROB[i].valor, ROB[i].valor_ok);
+    }
+    printf("+-----+------+-------------+---------+-------+-------------+-------+----------+\n");
 
-    puts("***********************");
+    // printf("TAG\tBUSY\tCLK_TICK_OK\tDESTINO\tETAPA\tINSTRUCCION\tVALOR\tVALOR_OK\n");
+    // for (i = 0; i < inst_prog; i++)
+    //     printf("%d\t%d\t%d\t\t%d\t%d\t%d\t\t%d\t%d\n", ROB[i].TAG_ROB, ROB[i].busy, ROB[i].clk_tick_ok, ROB[i].destino, ROB[i].etapa,
+    //            ROB[i].instruccion, ROB[i].valor, ROB[i].valor_ok);
+
+    // puts("***********************");
 }
 void imprime_ER()
 {
     int i, j;
     for (i = 0; i < TOTAL_UF; i++)
     {
-        printf("Estacion %d\n", i);
-        for (j = 0; j < INS; j++)
+        printf("+------------------------------------------------------------------------------\n");
+        printf("|Estacion %d                                                                   |\n", i);
+        printf("+---------+----+------+-----+---------+-----+---------+--------+--------+-----+\n");
+        printf("| TAG_ROB | OP | BUSY | OpA | CLK_OpA | OpB | CLK_OpB | OpB_OK | OpB_OK | INM |\n");
+        printf("+---------+----+------+-----+---------+-----+---------+--------+--------+-----+\n");
+        for (j = 0; j < inst_prog; j++)
         {
-            printf("TAG_ROB\tOP\tBUSY\tOpA\tCLK_OpA\tOpB\tCLK_OpB\tOpB_OK\tOpB_OK\tINM\n");
-            printf("%d\t", ER[i][j].TAG_ROB);
-            printf("%d\t", ER[i][j].operacion);
-            printf("%d\t", ER[i][j].busy);
-            printf("%d\t", ER[i][j].opa);
-            printf("%d\t", ER[i][j].clk_tick_ok_a);
-            printf("%d\t", ER[i][j].opb);
-            printf("%d\t", ER[i][j].clk_tick_ok_b);
-            printf("%d\t", ER[i][j].opa_ok);
-            printf("%d\t", ER[i][j].opb_ok);
-            printf("%d\n", ER[i][j].inmediato);
+            printf("| %7d | %2d | %4d | %3d | %7d | %3d | %7d | %6d | %6d | %3d |\n", ER[i][j].TAG_ROB, ER[i][j].operacion, ER[i][j].busy, ER[i][j].opa, ER[i][j].clk_tick_ok_a, ER[i][j].opb, ER[i][j].clk_tick_ok_b, ER[i][j].opa_ok, ER[i][j].opb_ok, ER[i][j].inmediato);
         }
+        printf("+---------+----+------+-----+---------+-----+---------+--------+--------+-----+\n");
+
+        // for (j = 0; j < INS; j++)
+        // {
+        //     printf("TAG_ROB\tOP\tBUSY\tOpA\tCLK_OpA\tOpB\tCLK_OpB\tOpB_OK\tOpB_OK\tINM\n");
+        //     printf("%d\t", ER[i][j].TAG_ROB);
+        //     printf("%d\t", ER[i][j].operacion);
+        //     printf("%d\t", ER[i][j].busy);
+        //     printf("%d\t", ER[i][j].opa);
+        //     printf("%d\t", ER[i][j].clk_tick_ok_a);
+        //     printf("%d\t", ER[i][j].opb);
+        //     printf("%d\t", ER[i][j].clk_tick_ok_b);
+        //     printf("%d\t", ER[i][j].opa_ok);
+        //     printf("%d\t", ER[i][j].opb_ok);
+        //     printf("%d\n", ER[i][j].inmediato);
+        // }
     }
 }
 
 void imprime_UF()
 {
     int i;
-    printf("TAG_ROB\tUSO\tOPERACION\tCONT_CICLOS\tOpA\tOpB\tRES\tRES_OK\n");
+    printf("+---------+-----+----------+-------------+-----+-----+-----+--------+\n");
+    printf("| TAG_ROB | USO | OPERACION | CONT_CICLOS  | OpA | OpB | RES | RES_OK |\n");
+    printf("+---------+-----+----------+-------------+-----+-----+-----+--------+\n");
     for (i = 0; i < TOTAL_UF; i++)
     {
-        printf("%d\t", UF[i].TAG_ROB);
-        printf("%d\t", UF[i].uso);
-        printf("%d\t", UF[i].operacion);
-        printf("%d\t", UF[i].cont_ciclos);
-        printf("%d\t", UF[i].opa);
-        printf("%d\t", UF[i].opb);
-        printf("%d\t", UF[i].res);
-        printf("%d\n", UF[i].res_ok);
+        printf("| %7d | %3d | %8d | %11d | %3d | %3d | %3d | %6d |\n", UF[i].TAG_ROB, UF[i].uso, UF[i].operacion, UF[i].cont_ciclos, UF[i].opa, UF[i].opb, UF[i].res, UF[i].res_ok);
     }
+    printf("+---------+-----+----------+-------------+-----+-----+-----+--------+\n");
+
+    // printf("TAG_ROB\tUSO\tOPERACION\tCONT_CICLOS\tOpA\tOpB\tRES\tRES_OK\n");
+    // for (i = 0; i < TOTAL_UF; i++)
+    // {
+    //     printf("%d\t", UF[i].TAG_ROB);
+    //     printf("%d\t", UF[i].uso);
+    //     printf("%d\t", UF[i].operacion);
+    //     printf("%d\t", UF[i].cont_ciclos);
+    //     printf("%d\t", UF[i].opa);
+    //     printf("%d\t", UF[i].opb);
+    //     printf("%d\t", UF[i].res);
+    //     printf("%d\n", UF[i].res_ok);
+    // }
 }
 
 void imprime_Banco_registros()
 {
     int i;
-    printf("TAG_ROB\tOK\tCLK_OK\tCONTENIDO\n");
+    printf("+---------+-----+--------+-----------+\n");
+    printf("| TAG_ROB | OK  | CLK_OK | CONTENIDO |\n");
+    printf("+---------+-----+--------+-----------+\n");
     for (i = 0; i < REG; i++)
     {
-        printf("%d\t", banco_registros[i].TAG_ROB);
-        printf("%d\t", banco_registros[i].ok);
-        printf("%d\t", banco_registros[i].clk_tick_ok);
-        printf("%d\n", banco_registros[i].contenido);
+        printf("| %7d | %3d | %6d | %9d |\n", banco_registros[i].TAG_ROB, banco_registros[i].ok, banco_registros[i].clk_tick_ok, banco_registros[i].contenido);
     }
+    printf("+---------+-----+--------+-----------+\n");
+
+    // printf("TAG_ROB\tOK\tCLK_OK\tCONTENIDO\n");
+    // for (i = 0; i < REG; i++)
+    // {
+    //     printf("%d\t", banco_registros[i].TAG_ROB);
+    //     printf("%d\t", banco_registros[i].ok);
+    //     printf("%d\t", banco_registros[i].clk_tick_ok);
+    //     printf("%d\n", banco_registros[i].contenido);
+    // }
 }
 
 void imprimeCPU()
@@ -737,7 +792,7 @@ int main(int argc, char *argv[])
     Inicializar_ROB(ROB);
     Inicializar_Banco_registros(banco_registros);
     Inicializar_memoria_datos(memoria_datos);
-    printf("%d y %d\n", inst_rob, inst_prog);
+    imprimeCPU();
     // Simulación. Bucle que se ejecuta mientras haya instrucciones en el ROB e instrucciones en la memoria de instrucciones
     while ((inst_rob > 0) || (inst_prog > 0))
     { // En un ciclo de reloj se ejecutan las 5 etapas de procesamiento de una instrucción
@@ -752,6 +807,7 @@ int main(int argc, char *argv[])
 
         imprimeCPU();
         ciclo++;
+        printf("%d y %d\n", inst_rob, inst_prog);
 
     } // while
 } // main

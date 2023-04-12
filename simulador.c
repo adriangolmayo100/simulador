@@ -163,47 +163,40 @@ void Inicializar_memoria_datos(int memoria_datos[])
         memoria_datos[i] = (i + 1) * 2;
     }
 }
-void Etapa_commit()
-{
-    // Objetivo: Retirar la instrucción contenida en ROB y apuntada por p_rob_cabeza si se ha ejecutado su etapa WB en un ciclo anterior.
-    // En otro caso no hace nada
-    // Se retiran en el mismo orden como se introducen. Solo se pueden retirar una instrucción por ciclo
-    // Acciones. SI x es la línea de ROB a retirar
-    // * instrucciones ALU y ld: Actualizar el registro ROB[x]. destino con el resultado almacenado en ROB[x].valor,
-    // si registro.TAG_ROB = ROB[x]:TA_ROB etiquetas y validarlo
-    // * Instrucciones sd: escribir en memoria en dirección ROB[x].destino el dato ROB[x].valor
-    // *Elimina la instrucción de instrucción de ROB
-    //
-    // Para todos los casos: Validar un resultado o un operando significa poner el campo ok a 1 y actualizar el campo clk_tick_ok con el
-    // el ciclo de reloj donde se ha realizado la validación.
-    ROB_t rob_;
+void Etapa_commit(){
+    ROB_t rob_, nuevo_rob;
+
     rob_ = ROB[p_rob_cabeza]; // instrucción a eliminar de ROB
-    if ((rob_.busy == 1) && (rob_.etapa == WB) && (rob_.valor_ok == 1) && (rob_.clk_tick_ok < ciclo))
-    { // instrucción preparada para retirar
+    if ((rob_.busy == 1) && (rob_.etapa == WB) && (rob_.valor_ok == 1) && (rob_.clk_tick_ok < ciclo)){ 
+        // instrucción preparada para retirar
         // Actualizar el registro rob_.destino con rob_.valor, si rob_.TAG_ROB coincide con la etiqueta almacenada en ese registro destino.
         // Si rob_.operacion es store, escribir en memoria en la dirección rob_.destino el valor de rob_.valor
         // Retirar instrucción de ROB: Actualizar puntero de cabecera y número de instrucciones en rob (en store solo hace esto)
         // Limpiar línea ROB. Poner línea todo a 0
-        if (rob_.instruccion == sd)
-        {
+        
+        // Actualización de los registros.
+        if (rob_.instruccion == sd){
             memoria_datos[rob_.destino] = rob_.valor;
         }
-        else if (rob_.TAG_ROB == banco_registros[rob_.destino].TAG_ROB)
-        {
+        else if (rob_.TAG_ROB == banco_registros[rob_.destino].TAG_ROB){
             banco_registros[rob_.destino].contenido = rob_.valor;
         }
-        p_rob_cabeza++;
+        
+        // Borrado de la línea del ROB        
+        nuevo_rob.TAG_ROB = 0;
+        nuevo_rob.instruccion = 0;
+        nuevo_rob.busy = 0;
+        nuevo_rob.destino = 0;
+        nuevo_rob.valor = 0;
+        nuevo_rob.valor_ok = 0;
+        nuevo_rob.clk_tick_ok = 0;
+        nuevo_rob.etapa = 0;
+
+        ROB[p_rob_cabeza++] = nuevo_rob;
         inst_rob--;
-        rob_.TAG_ROB = 0;
-        rob_.instruccion = 0;
-        rob_.busy = 0;
-        rob_.destino = 0;
-        rob_.valor = 0;
-        rob_.valor_ok = 0;
-        rob_.clk_tick_ok = 0;
-        rob_.etapa = 0;
     }
 }
+
 void Etapa_WB(){
     // Objetivo:
     // 1. Se busca el primer resultado válido en una unidad funcional y se escribe en ROB.
@@ -228,61 +221,121 @@ void Etapa_WB(){
     // *en el campo clk_tick_ok_a y clk_tick_ok_b se actualiza ciclo
     // Si no hay ninguno resultado disponible, no se hace nada
     int i = 0, j = 0;   // contador de unidades funcionales
-    int bucle = 0, fin; // controla salir del bucle cuando encuentra un resultado valido. Solo WB un resultado
-    while (bucle == 0 && i < TOTAL_UF)
-    { // busca resultado valido en todas las UF. El primero que encuentra lo escribe en ROB y actualiza ER
-        if (UF[i].uso == 1 && UF[i].res_ok == 1 && UF[i].clk_tick_ok < ciclo)
-        {
+    int fin, bucle = 0; // controla salir del bucle cuando encuentra un resultado valido. Solo WB un resultado
+    
+    // Estructuras nuevas:
+    ROB_t n_ROB;
+    UF_t n_UF;
+    ER_t n_ER;
+    
+    //while (bucle == 0 && i < TOTAL_UF){ Bucle == 0 nunca entra no ?? debería ser != 0¿?
+
+    while ( !bucle && i < TOTAL_UF){ 
+        // busca resultado valido en todas las UF. El primero que encuentra lo escribe en ROB y actualiza ER
+        if (UF[i].uso == 1 && UF[i].res_ok == 1 && UF[i].clk_tick_ok < ciclo){
+            
+/*          Modificado Antonio:
             ROB[UF[i].TAG_ROB].valor = UF[i].res;
             ROB[UF[i].TAG_ROB].valor_ok = 1;
             ROB[UF[i].TAG_ROB].clk_tick_ok = ciclo;
-            if (ROB[UF[i].TAG_ROB].instruccion == sd)
-            {
-                ROB[UF[i].TAG_ROB].destino = UF[i].opa;
+*/
+
+            n_ROB.valor = UF[i].res;
+            n_ROB.valor_ok = 1;
+            n_ROB.clk_tick_ok = ciclo;         
+
+
+            if (ROB[UF[i].TAG_ROB].instruccion == sd){
+                n_ROB.destino = UF[i].opa;
+            }else{
+                n_ROB.destino = ROB[UF[i].TAG_ROB].destino;
             }
+
+            n_ROB.busy = ROB[UF[i].TAG_ROB].busy;
+            n_ROB.instruccion = ROB[UF[i].TAG_ROB].instruccion;
+            n_ROB.TAG_ROB = ROB[UF[i].TAG_ROB].TAG_ROB;
+            n_ROB.etapa = ROB[UF[i].TAG_ROB].etapa;
+
             // Actualiza linea ROB, x=ROB.UF[i].TAG_ROB con
             // ALU, ld: ROB[x].valor = UF[i].res y se valida con el resto de campos de ROB
             // sd: ROB.destino =UF[i].opb y ROB[x].valor = opb y se valida en el resto de campos de ROB
             //  Dejar libre UF. Poner todo a 0s
-            UF[i].uso = 0;
-            UF[i].cont_ciclos = 0;
-            UF[i].TAG_ROB = 0;
-            UF[i].opa = 0;
-            UF[i].opb = 0;
-            UF[i].operacion = 0;
-            UF[i].res = 0;
-            UF[i].res_ok = 0;
-            /* resultado
-            /* se ha escrito un dato. No se pueden escribir más. */
+                        
+            n_UF.uso = 0;
+            n_UF.cont_ciclos = 0;            
+            n_UF.opa = 0;
+            n_UF.opb = 0;
+            n_UF.operacion = 0;
+            n_UF.res = 0;
+            n_UF.res_ok = 0;
+            n_UF.TAG_ROB = 0;
+
+            // se ha escrito un dato. No se pueden escribir más. 
             bucle = 1;          // no habrá más iteraciones del bucle
                                 // actualizar estaciones de reserva donde hay líneas que esperan ese resultado.
                                 // bucle para recorrer todas las ER
             fin = p_er_cola[i]; // puntero al final de la ER
-            for (j = 0; j < fin; j++)
-            { // una iteración por línea de ER ocupada de ER[k]. Siempre empieza en 0 (posibilidad de que no sea así)
-                /*Si operando depende de ese resultado */
-                if (ER[i][j].busy)
-                { // si la línea está ocupada.
-                    if ((ER[i][j].opa_ok == 0) && (ER[i][j].opa == UF[i].TAG_ROB))
-                    {
+
+            // Actualización de los structs
+            ROB[UF[i].TAG_ROB] = n_ROB; // Posible perdida de lo ROB por modificar la UF
+
+            for (j = 0; j < fin; j++){ 
+                // una iteración por línea de ER ocupada de ER[k]. Siempre empieza en 0 (posibilidad de que no sea así)
+                //Si operando depende de ese resultado
+
+                if (ER[i][j].busy){ 
+                    // si la línea está ocupada.
+
+                    if ((ER[i][j].opa_ok == 0) && (ER[i][j].opa == UF[i].TAG_ROB)){
+                        n_ER.opa = ROB[UF[i].TAG_ROB].valor;
+                        n_ER.opa_ok = 1;
+/*
                         ER[i][j].opa = ROB[UF[i].TAG_ROB].valor;
                         ER[i][j].opa_ok == 1;
+*/
+
+                        n_ER.clk_tick_ok_a = ER[i][j].clk_tick_ok_a;
+                        n_ER.clk_tick_ok_b = ER[i][j].clk_tick_ok_b;
+                        n_ER.inmediato = ER[i][j].inmediato;
+                        n_ER.operacion = ER[i][j].operacion;
+                        n_ER.TAG_ROB = ER[i][j].TAG_ROB;
+
+                        n_ER.opb = ER[i][j].opb;
+                        n_ER.opb_ok = ER[i][j].opb_ok;
                         break;
-                    }
-                    if (ER[i][j].opb_ok == 0 && ER[i][j].opb == UF[i].TAG_ROB)
-                    {
+
+                    }if (ER[i][j].opb_ok == 0 && ER[i][j].opb == UF[i].TAG_ROB){
+                        n_ER.opb = ROB[UF[i].TAG_ROB].valor;
+                        n_ER.opb_ok = 1;
+/*                      
                         ER[i][j].opb = ROB[UF[i].TAG_ROB].valor;
                         ER[i][j].opb_ok == 1;
+*/
+                        
+                        n_ER.clk_tick_ok_a = ER[i][j].clk_tick_ok_a;
+                        n_ER.clk_tick_ok_b = ER[i][j].clk_tick_ok_b;
+                        n_ER.inmediato = ER[i][j].inmediato;
+                        n_ER.operacion = ER[i][j].operacion;
+                        n_ER.TAG_ROB = ER[i][j].TAG_ROB;
+
+                        n_ER.opa = ER[i][j].opa;
+                        n_ER.opa_ok = ER[i][j].opa_ok;
                         break;
                     } // opb
 
                 } // fin for líneas ER
             }     // end for todas ER
-        }
-        else           // if principal
-            i = i + 1; // siguiente UF
-    }                  // while todas UFs
+        
+        }else// if principal
+            i++; 
+    }// while todas UFs
+
+    UF[i] = n_UF;
+    ER[i][j] = n_ER;
+
 }
+
+
 void Etapa_EX(){
     // En todas las UF:
     // 1. En todas las UF que están en uso:
@@ -331,136 +384,124 @@ void Etapa_EX(){
                 else // COMPROBAR
                     unidad.res = unidad.opa + unidad.opb;
             }
-        }else{
-            // Buscamos la ER de ADD:
-            estacionR = ER[0];
-            fin = p_er_cola[0];
-            j = 0;
-            while ((!enviar) && (j < fin)){
-                if (estacionR[j].busy){
-                    if (estacionR[j].opa_ok && estacionR[j].clk_tick_ok_a < ciclo && estacionR[j].opb_ok && estacionR[j].clk_tick_ok_b < ciclo)
-                    { // Operandos disponibles
-                        UF_t uf_nueva;
-                        // Mandamos la instrucción a ejecutar, actualizando la UF
-                        uf_nueva.cont_ciclos = 1;
-                        uf_nueva.opa = estacionR[j].opa;
-                        uf_nueva.opb = estacionR[j].opb;
-                        uf_nueva.res_ok = 0;
-                        uf_nueva.res = -1;
-                        uf_nueva.uso = 1;
-                        uf_nueva.TAG_ROB = estacionR[j].TAG_ROB;
-                        uf_nueva.operacion = estacionR[j].operacion;
-                        uf_nueva.clk_tick_ok = -1;
-                        
-                        ROB[estacionR[j].TAG_ROB].etapa = EX;
-                        enviar = 1;
-                        estacionR[j].busy = 0;
+        }
+        i++;
+    }
+ 
+    // Buscamos la ER de ADD:
+    estacionR = ER[0];
+    fin = p_er_cola[0];
+    j = 0;
+    while ((!enviar) && (j < fin)){
+        if (estacionR[j].busy){
+            if (estacionR[j].opa_ok && estacionR[j].clk_tick_ok_a < ciclo && estacionR[j].opb_ok && estacionR[j].clk_tick_ok_b < ciclo)
+            { // Operandos disponibles
+                UF_t uf_nueva;
+                // Mandamos la instrucción a ejecutar, actualizando la UF
+                uf_nueva.cont_ciclos = 1;
+                uf_nueva.opa = estacionR[j].opa;
+                uf_nueva.opb = estacionR[j].opb;
+                uf_nueva.res_ok = 0;
+                uf_nueva.res = -1;
+                uf_nueva.uso = 1;
+                uf_nueva.TAG_ROB = estacionR[j].TAG_ROB;
+                uf_nueva.operacion = estacionR[j].operacion;
+                uf_nueva.clk_tick_ok = -1;
+                
+                ROB[estacionR[j].TAG_ROB].etapa = EX;
+                enviar = 1;
+                estacionR[j].busy = 0;
 
-                        UF[i] = uf_nueva;
-                    
-                    }
-                }
-                else
-                    j++;
-            }
-
-            // Buscar en ER MULT
-            estacionR = ER[2];
-            fin = p_er_cola[2];
-            j = 0;
-            while ((!enviar) && (j < fin))
-            {
-                if (estacionR[j].busy)
-                {
-                    if (estacionR[j].opa_ok && estacionR[j].clk_tick_ok_a < ciclo && estacionR[j].opb_ok && estacionR[j].clk_tick_ok_b < ciclo)
-                    { // Operandos disponibles
-                        UF_t uf_nueva;
-                        // Mandamos la instrucción a ejecutar, actualizando la UF
-                        uf_nueva.cont_ciclos = 1;
-                        uf_nueva.opa = estacionR[j].opa;
-                        uf_nueva.opb = estacionR[j].opb;
-                        uf_nueva.res_ok = 0;
-                        uf_nueva.res = -1;
-                        uf_nueva.uso = 1;
-                        uf_nueva.TAG_ROB = estacionR[j].TAG_ROB;
-                        uf_nueva.operacion = estacionR[j].operacion;
-                        uf_nueva.clk_tick_ok = -1;
-                        
-                        ROB[estacionR[j].TAG_ROB].etapa = EX;
-                        enviar = 1;
-                        estacionR[j].busy = 0;
-
-                        UF[i] = uf_nueva;
-                    }
-                }
-                else
-                    j++;
-            }
-
-            // Buscar en ER MEM
-            if ((!enviar) && (i == 1))
-            { // store
-                estacionR = ER[1];
-                if (((estacionR[0].operacion == sd)) && ((estacionR[0].opa_ok) && (estacionR[0].clk_tick_ok_a < ciclo)) && (estacionR[0].opb_ok) && (estacionR[0].clk_tick_ok_b < ciclo))
-                { // operandos disponibles para store
-                    UF_t uf_nueva;
-                    int dirmem = estacionR[0].opa + estacionR[0].inmediato;
-
-                    uf_nueva.cont_ciclos = 1;
-                    uf_nueva.res = estacionR[0].opb;
-                    uf_nueva.cont_ciclos = max;
-                    uf_nueva.uso = 1;
-                    uf_nueva.TAG_ROB = estacionR[0].TAG_ROB;
-                    uf_nueva.operacion = estacionR[j].operacion;
-                    uf_nueva.opa = memoria_datos[dirmem];
-
-                    ROB[estacionR[0].TAG_ROB].etapa = EX;
-                    enviar = 1;
-                    estacionR[0].busy = 0;
-
-                    UF[i] = uf_nueva;
-                }
-            }
-
-            if ((!enviar) && (i == 1))
-            { // load
-                estacionR = ER[1];
-                if (((estacionR[0].operacion == ld)) && ((estacionR[0].opa_ok) && (estacionR[0].clk_tick_ok_a < ciclo)))
-                { // operandos disponibles para store
-                    int dirmem = estacionR[0].opa + estacionR[0].inmediato;
-                    int sd_en_rob = 0;
-                    int x;
-
-                    while( x < INS && !sd_en_rob)
-                        if (ROB[x++].instruccion == sd)
-                            sd_en_rob++;
-                        
-                    if (sd_en_rob){
-                        UF[i].res = ROB[x].valor;
-                        UF[i].cont_ciclos = max;
-                    }
-
-                    else
-                        UF[i].cont_ciclos = 1;
-                    
-                    UF[i].uso = 1;
-                    UF[i].TAG_ROB = estacionR[0].TAG_ROB;
-                    ROB[estacionR[0].TAG_ROB].etapa = EX;
-                    enviar = 1;
-                    estacionR[0].busy = 0;
-                }
-            }
+                UF[i] = uf_nueva;
             
-            
-        } // ! uf.uso
-      i++;  
-    } // while
+            }
+        }
+        else
+            j++;
+    }
 
-    
+    // Buscar en ER MULT
+    estacionR = ER[2];
+    fin = p_er_cola[2];
+    j = 0;
+    while ((!enviar) && (j < fin)){
+        if (estacionR[j].busy){
+            if (estacionR[j].opa_ok && estacionR[j].clk_tick_ok_a < ciclo && estacionR[j].opb_ok && estacionR[j].clk_tick_ok_b < ciclo)
+            { // Operandos disponibles
+                UF_t uf_nueva;
+                // Mandamos la instrucción a ejecutar, actualizando la UF
+                uf_nueva.cont_ciclos = 1;
+                uf_nueva.opa = estacionR[j].opa;
+                uf_nueva.opb = estacionR[j].opb;
+                uf_nueva.res_ok = 0;
+                uf_nueva.res = -1;
+                uf_nueva.uso = 1;
+                uf_nueva.TAG_ROB = estacionR[j].TAG_ROB;
+                uf_nueva.operacion = estacionR[j].operacion;
+                uf_nueva.clk_tick_ok = -1;
+                
+                ROB[estacionR[j].TAG_ROB].etapa = EX;
+                enviar = 1;
+                estacionR[j].busy = 0;
+
+                UF[i] = uf_nueva;
+            }
+        }
+        else
+            j++;
+    }
+
+
+    // Buscar en ER MEM
+    estacionR = ER[1];
+    unidad = UF[1];
+
+    if(!enviar && ! unidad.uso){
+        if (((estacionR[0].operacion == sd)) && ((estacionR[0].opa_ok) && (estacionR[0].clk_tick_ok_a < ciclo)) && (estacionR[0].opb_ok) && (estacionR[0].clk_tick_ok_b < ciclo)){
+            // operandos disponibles para store
+            UF_t uf_nueva;
+            int dirmem = estacionR[0].opa + estacionR[0].inmediato;
+
+            uf_nueva.cont_ciclos = 1;
+            uf_nueva.res = estacionR[0].opb;
+            uf_nueva.cont_ciclos = max;
+            uf_nueva.uso = 1;
+            uf_nueva.TAG_ROB = estacionR[0].TAG_ROB;
+            uf_nueva.operacion = estacionR[j].operacion;
+            uf_nueva.opa = memoria_datos[dirmem];
+
+            ROB[estacionR[0].TAG_ROB].etapa = EX;
+            enviar = 1;
+            estacionR[0].busy = 0;
+
+            UF[i] = uf_nueva;
+        }else if(((estacionR[0].operacion == ld)) && ((estacionR[0].opa_ok) && (estacionR[0].clk_tick_ok_a < ciclo))){
+            int dirmem = estacionR[0].opa + estacionR[0].inmediato;
+            int sd_en_rob = 0;
+            int x;
+
+            while( x < INS && !sd_en_rob)
+                if (ROB[x++].instruccion == sd)
+                    sd_en_rob++;
+                
+            if (sd_en_rob){
+                UF[i].res = ROB[x].valor;
+                UF[i].cont_ciclos = max;
+            }
+
+            else
+                UF[i].cont_ciclos = 1;
+            
+            UF[i].uso = 1;
+            UF[i].TAG_ROB = estacionR[0].TAG_ROB;
+            ROB[estacionR[0].TAG_ROB].etapa = EX;
+            enviar = 1;
+            estacionR[0].busy = 0;
+        }
+    }       
 }
 
-void Etapa_ID_ISS()
-{
+void Etapa_ID_ISS(){
     // 1.- Lee una instrucción de la directamente de la memoria de instrucciones y la inserta en la ER correspondiente.
     //  instrucción apuntada por PC: inst = memoria_instrucciones[PC]
     //  2.- Identifica el tipo de instrucción y selecciona la ER para insertarla. Será función del código de operación de la instrucción
@@ -499,13 +540,29 @@ void Etapa_ID_ISS()
         // Actualizar línea de la ER correspondiente según tipo de instrucción, ER[p_er_cola[tipo]], donde tipo se obtiene a partir del código de operación.
         int uf;
 
+        switch (inst.cod){
+        case add:
+        case sub:
+            uf = ALU;
+            break;
+        
+        case mult:
+            uf = MULT;
+            break;
+        
+        default:
+            uf = MEM;
+            break;
+        }
+/*
         if (inst.cod == add || inst.cod == sub)
             uf=ALU;
         else if(inst.cod == mult)
             uf=MULT;
         else
             uf=MEM;
-        
+*/
+
         int index_RS = p_er_cola[uf]++;
 
         ER_t linea_ER;
@@ -524,15 +581,17 @@ void Etapa_ID_ISS()
         //  Todas las instrucciones excepto ld: buscar operandos a y b en registros y/o ROB. Load solo busca operando a
         if (inst.cod == ld){
             linea.destino = inst.rt;
-            if (banco_registros[inst.rs].ok)
+            if (banco_registros[inst.rs].ok){
                 linea_ER.opa = banco_registros[inst.rs].contenido;
-            else
-            {
+                linea_ER.opa_ok = 1; // 
+            
+            }else{
                 int rob_rt = banco_registros[inst.rt].TAG_ROB;
-                if (ROB[rob_rt].valor_ok)
+                if (ROB[rob_rt].valor_ok){
                     linea_ER.opa = ROB[rob_rt].valor;
-                else
-                {
+                    linea_ER.opa_ok = 1; // 
+                
+                }else{
                     linea_ER.opa_ok = ROB[rob_rt].TAG_ROB;
                     linea_ER.clk_tick_ok_a = ROB[rob_rt].clk_tick_ok;
                 }
@@ -541,26 +600,37 @@ void Etapa_ID_ISS()
             if (inst.cod != sd)
                 linea.destino = inst.rd;
 
-            if (banco_registros[inst.rs].ok)
-                linea_ER.opa = banco_registros[inst.rs].contenido;
-            else
-            {
+            // Comprobar disponibilidad de operando RT
+
+            if (banco_registros[inst.rt].ok){
+                linea_ER.opa = banco_registros[inst.rt].contenido;
+                linea_ER.opa_ok = 1;
+            
+            }else{
                 int rob_rt = banco_registros[inst.rt].TAG_ROB;
-                if (ROB[rob_rt].valor_ok)
+                if (ROB[rob_rt].valor_ok){
                     linea_ER.opa = ROB[rob_rt].valor;
-                else
-                {
+                    linea_ER.opa_ok = 1;
+                
+                }else{
                     linea_ER.opa_ok = ROB[rob_rt].TAG_ROB;
                     linea_ER.clk_tick_ok_a = ROB[rob_rt].clk_tick_ok;
                 }
             }
-            if (banco_registros[inst.rs].ok)
-                linea_ER.opa = banco_registros[inst.rs].contenido;
+
+            // Comprobar disponibilidad de operando RS
+
+            if (banco_registros[inst.rs].ok){
+                linea_ER.opb = banco_registros[inst.rs].contenido;
+                linea_ER.opb_ok = 1;
+            }
             else
             {
                 int rob_rs = banco_registros[inst.rs].TAG_ROB;
-                if (ROB[rob_rs].valor_ok)
+                if (ROB[rob_rs].valor_ok){
                     linea_ER.opb = ROB[rob_rs].valor;
+                    linea_ER.opb_ok = 1;
+                }
                 else
                 {
                     linea_ER.opb_ok = ROB[rob_rs].TAG_ROB;
@@ -578,8 +648,7 @@ void Etapa_ID_ISS()
     }
 }
 
-int Carga_programa()
-{
+int Carga_programa(){
     /* strtok es utilizado como splitter para strings */
     // El formato del fichero no debe contener espacio entre los operandos
     FILE *archivo = fopen(ARCHIVO_INSTRUCCIONES, "r");
@@ -813,21 +882,15 @@ void imprimeCPU()
 }
 
 int main(int argc, char *argv[]){
-    
+
     // Inicialización del simulador
     inst_prog = Carga_programa();
     Inicializar_ER(ER);
     Inicializar_ROB(ROB);
     Inicializar_Banco_registros(banco_registros);
     Inicializar_memoria_datos(memoria_datos);
-    //imprimeCPU();
-    // Simulación. Bucle que se ejecuta mientras haya instrucciones en el ROB e instrucciones en la memoria de instrucciones
-    while ((inst_rob > 0) || (inst_prog > 0))
-    { // En un ciclo de reloj se ejecutan las 5 etapas de procesamiento de una instrucción
-        // Ejecutar cada una de las etapas.
-        // Omitimos IF. La instrucción es leída directamente desde la memoria_instrucciones y se inserta en la ER correspondiente
-        // Cada iteración del bucle simula las diferentes etapas de ejecución de la instrucción que se ejecutan en paralelo
-        // Ejectuar las etapas en ese orden.
+    
+    while ((inst_rob > 0) || (inst_prog > 0)){ 
         Etapa_commit();
         Etapa_WB();
         Etapa_EX();
@@ -839,3 +902,15 @@ int main(int argc, char *argv[]){
 
     } // while
 } // main
+
+// MODIFICADO
+/*
+
+ETAPA ID_ISS: 
+  añadidos opa_ok y opb_ok
+  cambiado los structs para que sí se actualicen.
+
+ETAPA COMMIT y WB:
+  cambiado la asignación de structs
+
+*/

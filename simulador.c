@@ -302,6 +302,9 @@ void Etapa_WB(){
 
                         n_ER.opb = ER[i][j].opb;
                         n_ER.opb_ok = ER[i][j].opb_ok;
+
+                        UF[i] = n_UF;
+                        ER[i][j] = n_ER;
                         break;
 
                     }if (ER[i][j].opb_ok == 0 && ER[i][j].opb == UF[i].TAG_ROB){
@@ -320,6 +323,9 @@ void Etapa_WB(){
 
                         n_ER.opa = ER[i][j].opa;
                         n_ER.opa_ok = ER[i][j].opa_ok;
+
+                        UF[i] = n_UF;
+                        ER[i][j] = n_ER;
                         break;
                     } // opb
 
@@ -330,11 +336,7 @@ void Etapa_WB(){
             i++; 
     }// while todas UFs
 
-    UF[i] = n_UF;
-    ER[i][j] = n_ER;
-
 }
-
 
 void Etapa_EX(){
     // En todas las UF:
@@ -521,8 +523,8 @@ void Etapa_ID_ISS(){
     //  *Actualizar p_er_cola[tipo] + 1
     // 4.- Invalidar contenido del registro destino poniendo campo ok a 0 y en TAG_ROB la línea de ROB donde se ha almacenado dicha instrucción.
     // 5. Actualiza PC + 1 y inst_prog - 1
-    if (inst_prog > 0)
-    { // leer la instrucción apuntada por PC y almacenarla en ER y ROB
+    if (inst_prog > 0){ 
+        // leer la instrucción apuntada por PC y almacenarla en ER y ROB
         instruccion_t inst = memoria_instrucciones[PC++];
         ROB_t linea; 
         linea.TAG_ROB = p_rob_cola;

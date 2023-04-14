@@ -1,7 +1,7 @@
-ld f1,2(r0)
-ld f2,3(r0)
-fadd f3,f1,f2
-fmult f4,f5,f6
-fadd f3,f4,f3
-fadd f4,f4,f2
-sd f4,4(r0)
+ld r1,2(r0)
+ld r2,3(r0)
+add r3,r1,r2
+mult r4,r5,r6
+add r3,r4,r3
+add r4,r4,r2
+sd r4,4(r0)

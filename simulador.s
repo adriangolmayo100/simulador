@@ -33,7 +33,7 @@ ciclo:
 	.comm	UF,108,32
 	.comm	ER,3840,32
 	.comm	ROB,1024,32
-	.comm	inst_prog,4,4
+	.comm	inst_restantes,4,4
 	.globl	inst_rob
 	.bss
 	.align 4
@@ -1664,7 +1664,7 @@ Etapa_ID_ISS:
 	pushq	%rbx
 	subq	$24, %rsp
 	.cfi_offset 3, -24
-	movl	inst_prog(%rip), %eax
+	movl	inst_restantes(%rip), %eax
 	testl	%eax, %eax
 	jle	.L73
 	movl	PC(%rip), %eax
@@ -2152,9 +2152,9 @@ Etapa_ID_ISS:
 	addq	%rdx, %rax
 	movl	%esi, (%rax)
 .L65:
-	movl	inst_prog(%rip), %eax
+	movl	inst_restantes(%rip), %eax
 	subl	$1, %eax
-	movl	%eax, inst_prog(%rip)
+	movl	%eax, inst_restantes(%rip)
 .L73:
 	nop
 	addq	$24, %rsp
@@ -2674,7 +2674,7 @@ imprime_rob:
 	addq	$32, %rsp
 	addl	$1, -4(%rbp)
 .L97:
-	movl	inst_prog(%rip), %eax
+	movl	inst_restantes(%rip), %eax
 	cmpl	%eax, -4(%rbp)
 	jl	.L104
 	leaq	.LC17(%rip), %rdi
@@ -2698,7 +2698,7 @@ imprime_rob:
 	.string	"+---------+----+------+-----+---------+-----+---------+--------+--------+-----+"
 	.align 8
 .LC27:
-	.string	"| TAG_ROB | OP | BUSY | OpA | CLK_OpA | OpB | CLK_OpB | OpB_OK | OpB_OK | INM |"
+	.string	"| TAG_ROB | OP | BUSY | OpA | CLK_OpA | OpB | CLK_OpB | opb_Q | opb_Q | INM |"
 	.align 8
 .LC28:
 	.string	"| %7d | %2d | %4d | %3d | %7d | %3d | %7d | %6d | %6d | %3d |\n"
@@ -2927,7 +2927,7 @@ imprime_ER:
 	addq	$48, %rsp
 	addl	$1, -36(%rbp)
 .L107:
-	movl	inst_prog(%rip), %eax
+	movl	inst_restantes(%rip), %eax
 	cmpl	%eax, -36(%rbp)
 	jl	.L108
 	leaq	.LC26(%rip), %rdi
@@ -3237,7 +3237,7 @@ main:
 	movq	%rsi, -16(%rbp)
 	movl	$0, %eax
 	call	Carga_programa
-	movl	%eax, inst_prog(%rip)
+	movl	%eax, inst_restantes(%rip)
 	leaq	ER(%rip), %rdi
 	call	Inicializar_ER
 	leaq	ROB(%rip), %rdi
@@ -3261,7 +3261,7 @@ main:
 	movl	ciclo(%rip), %eax
 	addl	$1, %eax
 	movl	%eax, ciclo(%rip)
-	movl	inst_prog(%rip), %edx
+	movl	inst_restantes(%rip), %edx
 	movl	inst_rob(%rip), %eax
 	movl	%eax, %esi
 	leaq	.LC43(%rip), %rdi
@@ -3271,7 +3271,7 @@ main:
 	movl	inst_rob(%rip), %eax
 	testl	%eax, %eax
 	jg	.L119
-	movl	inst_prog(%rip), %eax
+	movl	inst_restantes(%rip), %eax
 	testl	%eax, %eax
 	jg	.L119
 	movl	$0, %eax

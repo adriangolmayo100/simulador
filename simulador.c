@@ -267,9 +267,9 @@ void Etapa_WB()
             ROB[n_UF.TAG_ROB] = n_ROB;
 
             // se ha escrito un dato. No se pueden escribir más.
-            bucle = 1;          // no habrá más iteraciones del bucle
-                                // actualizar estaciones de reserva donde hay líneas que esperan ese resultado.
-                                // bucle para recorrer todas las ER
+            bucle = 1; // no habrá más iteraciones del bucle
+                       // actualizar estaciones de reserva donde hay líneas que esperan ese resultado.
+                       // bucle para recorrer todas las ER
 
             int h;
             for (h = 0; h < TOTAL_UF; h++) // Hay que recorrer todas las ER buscando posibles dependencias
@@ -413,6 +413,15 @@ void Etapa_EX()
                 ROB[estacionR[j].TAG_ROB].etapa = EX;
                 enviar = 1;
                 estacionR[j].busy = 0;
+                estacionR[j].clk_tick_ok_a = 0;
+                estacionR[j].clk_tick_ok_b = 0;
+                estacionR[j].inmediato = 0;
+                estacionR[j].opa = 0;
+                estacionR[j].opa_Q = 0;
+                estacionR[j].opb = 0;
+                estacionR[j].opb_Q = 0;
+                estacionR[j].operacion = 0;
+                estacionR[j].TAG_ROB = 0;
             }
             else if (((estacionR[j].operacion == ld)) && ((!estacionR[j].opa_Q) && (estacionR[j].clk_tick_ok_a < ciclo)))
             {
@@ -442,6 +451,15 @@ void Etapa_EX()
                 banco_registros[ROB[estacionR[j].TAG_ROB].destino].clk_tick_ok = unidad.clk_tick_ok;
                 enviar = 1;
                 estacionR[j].busy = 0;
+                estacionR[j].clk_tick_ok_a = 0;
+                estacionR[j].clk_tick_ok_b = 0;
+                estacionR[j].inmediato = 0;
+                estacionR[j].opa = 0;
+                estacionR[j].opa_Q = 0;
+                estacionR[j].opb = 0;
+                estacionR[j].opb_Q = 0;
+                estacionR[j].operacion = 0;
+                estacionR[j].TAG_ROB = 0;
                 unidad.cont_ciclos = 1;
             }
             UF[1] = unidad;
@@ -475,6 +493,15 @@ void Etapa_EX()
                 ROB[estacionR[j].TAG_ROB].clk_tick_ok = uf_nueva.clk_tick_ok;
                 enviar = 1;
                 estacionR[j].busy = 0;
+                estacionR[j].clk_tick_ok_a = 0;
+                estacionR[j].clk_tick_ok_b = 0;
+                estacionR[j].inmediato = 0;
+                estacionR[j].opa = 0;
+                estacionR[j].opa_Q = 0;
+                estacionR[j].opb = 0;
+                estacionR[j].opb_Q = 0;
+                estacionR[j].operacion = 0;
+                estacionR[j].TAG_ROB = 0;
                 UF[0] = uf_nueva;
             }
         }
@@ -508,6 +535,15 @@ void Etapa_EX()
                 ROB[estacionR[j].TAG_ROB].clk_tick_ok = uf_nueva.clk_tick_ok;
                 enviar = 1;
                 estacionR[j].busy = 0;
+                estacionR[j].clk_tick_ok_a = 0;
+                estacionR[j].clk_tick_ok_b = 0;
+                estacionR[j].inmediato = 0;
+                estacionR[j].opa = 0;
+                estacionR[j].opa_Q = 0;
+                estacionR[j].opb = 0;
+                estacionR[j].opb_Q = 0;
+                estacionR[j].operacion = 0;
+                estacionR[j].TAG_ROB = 0;
                 UF[2] = uf_nueva;
             }
         }
@@ -835,8 +871,8 @@ void imprime_ER()
     {
         printf("+-----------------------------------------------------------------+\n");
         printf("|Estacion %4s                                                    |\n", (i) == ALU ? "ALU" : (i) == MEM ? "MEM"
-                                                                                                  : (i) == MULT  ? "MULT"
-                                                                                                                 : "-1");
+                                                                                                        : (i) == MULT  ? "MULT"
+                                                                                                                       : "-1");
         printf("+---------+------+------+-------+-------+--------+--------+-------+\n");
         printf("| TAG_ROB |  OP  | BUSY |  OpA  |  OpB  | OpA_Qj | OpB_Qk |  INM  |\n");
         printf("+---------+------+------+-------+-------+--------+--------+-------+\n");
@@ -877,7 +913,13 @@ void imprime_UF()
     printf("+---------+-----+-----------+-------------+-------+-------+-------+-----------------+\n");
     for (i = 0; i < TOTAL_UF; i++)
     {
-        printf("| %7d | %3d | %9d | %11d | %5d | %5d | %5d | %6d | %6d |\n", UF[i].TAG_ROB, UF[i].uso, UF[i].operacion, UF[i].cont_ciclos, UF[i].opa, UF[i].opb, UF[i].res, UF[i].res_ok, UF[i].clk_tick_ok);
+        printf("| %7d | %3d | %9s | %11d | %5d | %5d | %5d | %6d | %6d |\n", UF[i].TAG_ROB, UF[i].uso,
+               ((UF[i].operacion) == add ? "add" : (UF[i].operacion) == sub ? "sub"
+                                               : (UF[i].operacion) == ld    ? "ld"
+                                               : (UF[i].operacion) == sd    ? "sd"
+                                               : (UF[i].operacion) == mult  ? "mult"
+                                                                            : "0"),
+               UF[i].cont_ciclos, UF[i].opa, UF[i].opb, UF[i].res, UF[i].res_ok, UF[i].clk_tick_ok);
     }
     printf("+---------+-----+-----------+-------------+-------+-------+-------+---------+-------+\n");
 
@@ -924,14 +966,15 @@ void imprimeCPU()
     imprime_memoria_inst();
     printf("Memoria Datos\n");
     imprime_memoria_datos();
-    printf("ROB\n");
+    printf("Buffer de reordenamiento\n");
     imprime_rob();
-    printf("ER\n");
+    printf("Estaciones de reserva\n");
     imprime_ER();
-    printf("UF\n");
+    printf("Unidades funcionales\n");
     imprime_UF();
     printf("Banco de registros\n");
     imprime_Banco_registros();
+    printf("Final ciclo %d: Instrucciones restantes en ROB: %d, Instucciones restantes del programa: %d\n", ciclo, inst_rob, inst_restantes);
     puts("\n\n");
 }
 
@@ -953,8 +996,6 @@ int main(int argc, char *argv[])
         Etapa_ID_ISS();
 
         imprimeCPU();
-        printf("Inst ROB: %d, Inst prog: %d\n", inst_rob, inst_restantes);
-
         ciclo++;
 
     } // while
